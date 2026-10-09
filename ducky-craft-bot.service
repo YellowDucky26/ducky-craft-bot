@@ -1,0 +1,21 @@
+[Unit]
+Description=Ducky-Craft Discord-bot (Jellyseerr, invites, meldingen)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ducky-bot
+WorkingDirectory=/opt/ducky-craft-bot
+EnvironmentFile=/etc/ducky-craft-bot/bot.env
+ExecStart=/opt/ducky-craft-bot/.venv/bin/python -m duckybot
+StateDirectory=ducky-craft-bot
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
