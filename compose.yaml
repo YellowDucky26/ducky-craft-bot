@@ -1,0 +1,43 @@
+# Voor TrueNAS: Apps -> Discover Apps -> ⋮ -> Install via YAML.
+# Zet de projectmap eerst in een dataset, bv. /mnt/tank/apps/ducky-craft-bot
+# (met daarin duckybot/ en requirements.txt), en maak een lege submap data/.
+# Pas de volume-paden hieronder aan naar jouw pool/dataset en vul de waarden in.
+# De dependencies (discord.py, aiohttp) worden bij het starten in data/pylib gezet.
+services:
+  ducky-craft-bot:
+    image: python:3.13-alpine
+    container_name: ducky-craft-bot
+    restart: unless-stopped
+    user: "568:568"
+    working_dir: /app
+    command:
+      - sh
+      - -c
+      - pip install --quiet --no-cache-dir --disable-pip-version-check --target /data/pylib -r requirements.txt && exec python3 -m duckybot
+    volumes:
+      - /mnt/tank/apps/ducky-craft-bot:/app:ro
+      - /mnt/tank/apps/ducky-craft-bot/data:/data
+    ports:
+      - "8688:8688"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: /data/pylib
+      HOME: /data
+      DATA_DIR: /data
+      DISCORD_TOKEN: "CHANGE_ME"
+      GUILD_ID: "CHANGE_ME"
+      JELLYSEERR_URL: "http://192.168.1.10:5055"
+      JELLYSEERR_PUBLIC_URL: "https://requests.example.nl"
+      JELLYSEERR_API_KEY: "CHANGE_ME"
+      JELLYFIN_URL: "http://192.168.1.10:8096"
+      JELLYFIN_PUBLIC_URL: "https://jellyfin.example.nl"
+      JELLYFIN_API_KEY: "CHANGE_ME"
+      ADMIN_ROLE_IDS: ""
+      INVITE_ROLE_IDS: ""
+      MEMBER_ROLE_ID: ""
+      REQUEST_CHANNEL_ID: ""
+      ADMIN_CHANNEL_ID: ""
+      ANNOUNCE_CHANNEL_ID: ""
+      INVITE_CHANNEL_ID: ""
+      WEB_PORT: "8688"
+      WEBHOOK_SECRET: "CHANGE_ME_lange_willekeurige_string"

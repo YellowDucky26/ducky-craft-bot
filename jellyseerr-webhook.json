@@ -1,0 +1,29 @@
+{
+  "notification_type": "{{notification_type}}",
+  "event": "{{event}}",
+  "subject": "{{subject}}",
+  "message": "{{message}}",
+  "image": "{{image}}",
+  "{{media}}": {
+    "media_type": "{{media_type}}",
+    "tmdbId": "{{media_tmdbid}}",
+    "status": "{{media_status}}",
+    "jellyfinMediaId": "{{media_jellyfinMediaId}}"
+  },
+  "{{request}}": {
+    "request_id": "{{request_id}}",
+    "requestedBy_username": "{{requestedBy_username}}",
+    "requestedBy_settings_discordIds": "{{requestedBy_settings_discordIds}}",
+    "requestedBy_settings_discordId": "{{requestedBy_settings_discordId}}"
+  },
+  "{{issue}}": {
+    "issue_id": "{{issue_id}}",
+    "issue_type": "{{issue_type}}",
+    "reportedBy_username": "{{reportedBy_username}}"
+  },
+  "{{comment}}": {
+    "comment_message": "{{comment_message}}",
+    "commentedBy_username": "{{commentedBy_username}}"
+  },
+  "{{extra}}": []
+}
