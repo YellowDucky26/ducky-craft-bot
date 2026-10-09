@@ -6,6 +6,7 @@ import aiohttp
 import discord
 from discord.ext import commands
 
+from . import __version__
 from .config import Config
 from .jellyfin import Jellyfin
 from .jellyseerr import Jellyseerr
@@ -74,7 +75,7 @@ class DuckyBot(commands.Bot):
         await super().close()
 
     async def on_ready(self) -> None:
-        log.info("Ingelogd als %s (%s)", self.user, self.user.id if self.user else "?")
+        log.info("Ingelogd als %s (%s), versie %s", self.user, self.user.id if self.user else "?", __version__)
         await self.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="/aanvraag"))
 
     async def on_app_command_error(

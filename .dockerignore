@@ -1,0 +1,5 @@
+*
+!requirements.txt
+!duckybot/
+**/__pycache__
+**/*.pyc

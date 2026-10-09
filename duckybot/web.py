@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 
 from aiohttp import web
 
+from . import __version__
+
 if TYPE_CHECKING:
     from .bot import DuckyBot
 
@@ -33,7 +35,7 @@ def create_app(bot: "DuckyBot") -> web.Application:
         return payload
 
     async def health(_request: web.Request) -> web.Response:
-        return web.json_response({"ok": True, "discord": bot.is_ready()})
+        return web.json_response({"ok": True, "discord": bot.is_ready(), "version": __version__})
 
     async def jellyseerr_webhook(request: web.Request) -> web.Response:
         payload = await read_json(request)

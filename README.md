@@ -1,5 +1,8 @@
 # ducky-craft-bot
 
+[![Docker](https://github.com/YellowDucky26/ducky-craft-bot/actions/workflows/docker.yml/badge.svg)](https://github.com/YellowDucky26/ducky-craft-bot/actions/workflows/docker.yml)
+[![Release](https://img.shields.io/github/v/release/YellowDucky26/ducky-craft-bot)](https://github.com/YellowDucky26/ducky-craft-bot/releases)
+
 Discord-bot voor de **Ducky-Craft**-server. Hij koppelt Discord aan
 Jellyseerr en Jellyfin:
 
@@ -87,26 +90,43 @@ Kopieer `bot.env.example` en vul de waarden in. Verplicht zijn `DISCORD_TOKEN`,
 `GUILD_ID`, `JELLYSEERR_URL`, `JELLYSEERR_API_KEY` en `WEBHOOK_SECRET` (een
 lange willekeurige string, bv. `openssl rand -hex 24`).
 
-#### Optie A: als Custom App op TrueNAS
+De bot is er als kant-en-klare image: `ghcr.io/yellowducky26/ducky-craft-bot`
+(amd64 en arm64).
 
-1. Zet de projectmap in een dataset, bv. `/mnt/tank/apps/ducky-craft-bot` (met
-   `duckybot/` en `requirements.txt`). Maak daarin een lege map `data/` die
-   schrijfbaar is voor de `apps`-gebruiker (UID 568).
-2. Apps → Discover Apps → ⋮ → **Install via YAML**. Plak `compose.yaml`, pas de
-   volume-paden aan en vul de omgevingsvariabelen in.
+| Tag | Wat |
+|---|---|
+| `latest` | de laatste release (aanrader) |
+| `1`, `1.2`, `1.2.3` | vastzetten op een (hoofd)versie |
+| `main` | elke push naar `main`: nieuwste, maar nog niet uitgebracht |
 
-De container installeert bij het starten discord.py en aiohttp in
-`data/pylib`. Er is dus geen eigen image nodig.
+#### Met Docker Compose (aanrader)
 
-#### Optie B: Docker op een andere host
+Zet `compose.yaml` en je ingevulde `bot.env` in dezelfde map en start:
 
 ```bash
-docker build -t ducky-craft-bot .
-docker run -d --name ducky-craft-bot --restart unless-stopped \
-  --env-file bot.env -e DATA_DIR=/data -v ducky-bot-data:/data -p 8688:8688 ducky-craft-bot
+docker compose up -d
 ```
 
-#### Optie C: systemd
+Updaten naar de nieuwste release:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+De data (`links.json`) staat in het volume `ducky-bot-data` en blijft bij een
+update bewaard.
+
+#### Met `docker run`
+
+```bash
+docker run -d --name ducky-craft-bot --restart unless-stopped \
+  --env-file bot.env -e DATA_DIR=/data -v ducky-bot-data:/data -p 8688:8688 \
+  ghcr.io/yellowducky26/ducky-craft-bot:latest
+```
+
+Of zelf bouwen: `docker build -t ducky-craft-bot .`
+
+#### Zonder Docker (systemd)
 
 ```bash
 sudo useradd --system --no-create-home ducky-bot
@@ -168,8 +188,9 @@ curl -X POST http://<bot-host>:8688/notify \
 | `color` | `"#rrggbb"` of een getal |
 | `url`, `image` | titel-link en thumbnail |
 
-`GET /health` geeft `{"ok": true, "discord": true}` als de bot verbonden is.
-Handig voor monitoring.
+`GET /health` geeft `{"ok": true, "discord": true, "version": "1.0.0"}` als de
+bot verbonden is. Handig voor monitoring; de Docker-image gebruikt het ook als
+healthcheck.
 
 Zet poort 8688 **niet** open naar internet: alleen Jellyseerr en je eigen
 diensten hoeven erbij.
@@ -183,3 +204,23 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt pytest pytest
 
 De tests draaien zonder Discord en zonder echte Jellyseerr. Ze gebruiken een
 nep-API en bootsen de placeholder-vervanging van Jellyseerr na.
+
+## Releases
+
+Elke push naar `main` wordt getest en als `:main` naar ghcr.io gezet. Een
+release maak je door een versietag te pushen:
+
+```bash
+git tag -a v1.1.0 -m "v1.1.0"
+git push origin v1.1.0
+```
+
+GitHub Actions draait dan de tests, bouwt de image (`:1.1.0`, `:1.1`, `:1` en
+`:latest`) en maakt een release op GitHub met de commits sinds de vorige versie
+en het `docker pull`-commando. Een tag als `v1.1.0-rc.1` wordt een pre-release
+en verandert `:latest` niet.
+
+Versienummers volgen [SemVer](https://semver.org/lang/nl/): **patch**
+(`1.0.1`) voor bugfixes, **minor** (`1.1.0`) voor nieuwe functies, **major**
+(`2.0.0`) als je bij het updaten iets moet aanpassen, zoals een hernoemde
+omgevingsvariabele.
