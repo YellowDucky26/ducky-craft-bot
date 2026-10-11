@@ -204,9 +204,6 @@ Welk bericht gaat waarheen:
 
 `ADMIN_CHANNEL_ID` leeg? Dan gaan adminberichten naar `REQUEST_CHANNEL_ID`.
 
-Berichten in een kanaal pingen de aanvrager (of bij problemen de melder), als
-de bot weet wie dat op Discord is. Rollen en @everyone worden nooit gepingd.
-
 Zet ook de meldingstypes voor problemen aan (*Probleem gemeld*, *Reactie*,
 *Opgelost* en *Heropend*) als je wilt dat melders een DM krijgen bij updates.
 

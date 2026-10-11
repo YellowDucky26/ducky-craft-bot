@@ -158,10 +158,6 @@ class Notifications(commands.Cog):
         notice = parse_seerr_payload(payload)
         cfg = self.bot.config
         embed = self.build_embed(notice)
-        people = self.people_for(notice)
-        # In het kanaal de aanvrager of melder pingen; alleen die, nooit rollen of @everyone.
-        ping = " ".join(f"<@{user_id}>" for user_id in sorted(people)) or None
-        ping_allowed = discord.AllowedMentions(users=[discord.Object(user_id) for user_id in people], roles=False, everyone=False)
 
         watch_view = None
         if link := self.jellyfin_url(notice):
@@ -174,12 +170,10 @@ class Notifications(commands.Cog):
                 view = discord.ui.View(timeout=None)
                 view.add_item(RequestDecisionButton("approve", notice.request_id))
                 view.add_item(RequestDecisionButton("decline", notice.request_id))
-            await self.bot.send_to(cfg.admin_channel_id or cfg.request_channel_id, content=ping, embed=embed, view=view,
-                                   allowed_mentions=ping_allowed)
+            await self.bot.send_to(cfg.admin_channel_id or cfg.request_channel_id, embed=embed, view=view)
 
         if "public" in notice.targets:
-            await self.bot.send_to(cfg.request_channel_id, content=ping, embed=embed, view=watch_view,
-                                   allowed_mentions=ping_allowed)
+            await self.bot.send_to(cfg.request_channel_id, embed=embed, view=watch_view)
 
         if "dm" in notice.targets and notice.dm_text:
             dm_view = watch_view
@@ -188,7 +182,7 @@ class Notifications(commands.Cog):
                 dm_view.add_item(discord.ui.Button(
                     label="Bekijk melding", url=f"{cfg.jellyseerr_public_url}/issues/{notice.issue_id}"
                 ))
-            for user_id in people:
+            for user_id in self.people_for(notice):
                 await self.bot.dm(user_id, content=notice.dm_text, embed=embed, view=dm_view)
 
         log.info("Jellyseerr-melding %s verwerkt (%s)", notice.notification_type, notice.title)
