@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -251,6 +252,18 @@ def test_link_store_roundtrip(tmp_path):
     assert store.discord_ids_for(name="kwak") == [111]
     assert store.discord_ids_for(seerr_id=2) == [111]
     assert store.remove(111) and not store.remove(111)
+
+
+def test_link_store_check_writable(tmp_path):
+    LinkStore(str(tmp_path)).check_writable()
+    assert list(tmp_path.iterdir()) == []
+
+    readonly = tmp_path / "ro"
+    readonly.mkdir(mode=0o555)
+    if os.access(readonly, os.W_OK):
+        pytest.skip("draait als root; schrijfrechten worden niet afgedwongen")
+    with pytest.raises(SystemExit, match="Kan niet schrijven"):
+        LinkStore(str(readonly)).check_writable()
 
 
 # --- notificatieroutering ------------------------------------------------------------

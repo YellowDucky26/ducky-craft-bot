@@ -12,6 +12,8 @@ services:
     environment:
       DATA_DIR: /data
     volumes:
+      # Een hostmap (./ducky-bot-data:/data) kan ook, maar moet eigendom zijn van
+      # uid 65534: `sudo chown 65534:65534 ducky-bot-data`. Zie de README.
       - ducky-bot-data:/data
     ports:
       - "8688:8688"

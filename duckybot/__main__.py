@@ -13,6 +13,7 @@ def main() -> None:
     )
     config = Config.from_env()
     bot = DuckyBot(config)
+    bot.links.check_writable()
     bot.run(config.discord_token, log_handler=None)
 
 

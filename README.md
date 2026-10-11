@@ -116,6 +116,15 @@ docker compose pull && docker compose up -d
 De data (`links.json`) staat in het volume `ducky-bot-data` en blijft bij een
 update bewaard.
 
+Liever een map op de host, zoals `./ducky-bot-data:/data`? De bot draait als
+`nobody` (uid 65534) en moet in die map kunnen schrijven. Maakt Docker de map
+zelf aan, dan is `root` de eigenaar en stopt de bot bij het starten met
+*Kan niet schrijven in de datamap*. Geef de map dan eenmalig de juiste eigenaar:
+
+```bash
+mkdir -p ducky-bot-data && sudo chown 65534:65534 ducky-bot-data
+```
+
 #### Met `docker run`
 
 ```bash

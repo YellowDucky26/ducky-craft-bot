@@ -19,6 +19,20 @@ class LinkStore:
             json.dump(self._links, fh, indent=2, ensure_ascii=False)
         os.replace(tmp, self._path)
 
+    def check_writable(self) -> None:
+        """Stop direct bij het starten als de datamap niet schrijfbaar is, niet pas bij /koppel."""
+        try:
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.TemporaryFile(dir=self._path.parent, prefix=".schrijftest-"):
+                pass
+        except OSError as exc:
+            uid = os.getuid() if hasattr(os, "getuid") else "?"
+            raise SystemExit(
+                f"Kan niet schrijven in de datamap {self._path.parent} ({exc.strerror}). "
+                f"De bot draait als uid {uid}; geef die eigenaar van de map, "
+                f"bijvoorbeeld: sudo chown {uid}:{uid} <map op de host>"
+            ) from exc
+
     def get(self, discord_id: int) -> dict | None:
         return self._links.get(str(discord_id))
 
