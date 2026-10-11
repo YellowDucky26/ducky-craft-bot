@@ -28,7 +28,8 @@ EVENTS: dict[str, tuple[str, int, set[str], str | None]] = {
     "MEDIA_FAILED": ("⚠️ Aanvraag mislukt", COLOR_DECLINED, {"admin"}, None),
     "ISSUE_CREATED": ("🐞 Nieuw probleem gemeld", COLOR_ISSUE, {"admin"}, None),
     "ISSUE_COMMENT": ("💬 Reactie op probleem", COLOR_ISSUE, {"admin"}, None),
-    "ISSUE_RESOLVED": ("✔️ Probleem opgelost", COLOR_AVAILABLE, {"admin"}, None),
+    "ISSUE_RESOLVED": ("✔️ Probleem opgelost", COLOR_AVAILABLE, {"admin", "dm"},
+                       "Het probleem dat je meldde bij **{title}** is opgelost. Bedankt voor het melden! 🛠️"),
     "ISSUE_REOPENED": ("🔁 Probleem heropend", COLOR_ISSUE, {"admin"}, None),
     "TEST_NOTIFICATION": ("🦆 Testmelding van Jellyseerr", COLOR_TEST, {"admin"}, None),
 }
@@ -63,6 +64,8 @@ class Notice:
     request_id: int | None = None
     requester: str = ""
     requester_discord_ids: list[int] = field(default_factory=list)
+    reporter: str = ""  # bij issues: wie het probleem meldde
+    reporter_discord_ids: list[int] = field(default_factory=list)
     media_type: str = ""
     tmdb_id: int | None = None
     jellyfin_item_id: str = ""
@@ -111,6 +114,10 @@ def parse_seerr_payload(payload: dict[str, Any]) -> Notice:
         requester=clean(request.get("requestedBy_username")),
         requester_discord_ids=snowflakes(
             request.get("requestedBy_settings_discordIds"), request.get("requestedBy_settings_discordId")
+        ),
+        reporter=clean(issue.get("reportedBy_username")),
+        reporter_discord_ids=snowflakes(
+            issue.get("reportedBy_settings_discordIds"), issue.get("reportedBy_settings_discordId")
         ),
         media_type=clean(media.get("media_type")),
         tmdb_id=int(tmdb_id) if tmdb_id.isdigit() else None,

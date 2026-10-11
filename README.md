@@ -7,9 +7,20 @@ Discord-bot voor de **Ducky-Craft**-server. Hij koppelt Discord aan
 Jellyseerr en Jellyfin:
 
 - **Media aanvragen** met `/request`: zoeken met autocomplete, een kaart met
-  poster en status, en één klik op *Aanvragen*. De aanvraag komt in Jellyseerr
-  op naam van de juiste gebruiker, met diens eigen rechten, quota en
-  auto-approve.
+  poster en status, en één klik op *Aanvragen*. Bij series kies je welke
+  seizoenen. De aanvraag komt in Jellyseerr op naam van de juiste gebruiker,
+  met diens eigen rechten, quota en auto-approve. Inspiratie nodig? `/trending`
+  en `/upcoming`.
+- **Problemen melden** met `/issue` (beeld, geluid, ondertitels). De melder
+  krijgt een DM zodra het is opgelost.
+- **De bibliotheek**: `/now-playing` laat zien wie er wat kijkt, `/whats-new`
+  wat er nieuw is. Elke week (of dag) plaatst de bot zelf een overzicht met
+  posters van de nieuwe films en afleveringen.
+- **Accountbeheer**: `/reset-password` stuurt een nieuw Jellyfin-wachtwoord per
+  DM. Verlaat een gekoppeld lid de server, dan meldt de bot dat in het
+  adminkanaal met knoppen om het Jellyfin-account uit te schakelen of te
+  verwijderen. Op de 1e van de maand volgt een lijst met inactieve accounts,
+  en `/stats` geeft cijfers over bibliotheek, accounts en aanvragen.
 - **Uitnodigen** met `/invite discord` (een invitelink) of `/invite jellyfin`
   (maakt een Jellyfin-account, importeert het in Jellyseerr, koppelt het aan
   het Discord-lid en stuurt de inloggegevens per DM).
@@ -32,17 +43,25 @@ Zusterproject van
 
 | Commando | Wie | Wat |
 |---|---|---|
-| `/request title:` | iedereen | Film of serie zoeken en aanvragen. Bij series worden alle ontbrekende seizoenen aangevraagd. |
-| `/my-requests` | iedereen | Je laatste 10 aanvragen met status. |
+| `/request title:` | iedereen | Film of serie zoeken en aanvragen. Bij series kies je de seizoenen; standaard alle ontbrekende. |
+| `/trending [type]` | iedereen | Populaire films en series van deze week, met een keuzelijst om meteen aan te vragen. |
+| `/upcoming [type]` | iedereen | Films of series die binnenkort uitkomen. |
+| `/issue title: type: description: [season] [episode]` | iedereen | Probleem melden bij een titel die in Jellyfin staat. |
+| `/my-requests` | iedereen | Je laatste 10 aanvragen met status, en hoeveel je nog mag aanvragen. |
+| `/now-playing` | iedereen | Wie kijkt er nu wat op Jellyfin? |
+| `/whats-new [days]` | iedereen | Wat er de afgelopen dagen (standaard 7) aan Jellyfin is toegevoegd. |
+| `/reset-password [member]` | iedereen | Nieuw tijdelijk Jellyfin-wachtwoord per DM. Admins kunnen een `member` opgeven. Werkt niet voor Jellyfin-beheerders. |
 | `/my-account` | iedereen | Aan welk Jellyseerr-account ben je gekoppeld? Met een knop om je e-mailadres in te vullen of te wijzigen. |
 | `/invite discord [max_uses] [expires]` | invite-rol / admin | Invitelink, standaard 1× te gebruiken en 1 dag geldig. |
 | `/invite jellyfin member: [username]` | invite-rol / admin | Jellyfin-account voor een lid. |
 | `/link member: user:` | admin | Discord-lid handmatig aan een Jellyseerr-account koppelen. Het lid krijgt een DM om zelf een e-mailadres in te vullen. |
 | `/unlink member:` | admin | Koppeling verwijderen. |
 | `/announce [channel] [ping]` | admin | Aankondiging versturen; titel en tekst vul je in een venster in. |
+| `/stats` | admin | Bibliotheek, accounts, aanvragen deze maand, wie het meest aanvraagt en kijkt. |
+| `/inactive` | admin | Jellyfin-accounts die al `INACTIVE_DAYS` dagen niets hebben gekeken. |
 
 **Admin** is iedereen met het recht *Server beheren* of een rol uit
-`ADMIN_ROLE_IDS`. `/link`, `/unlink` en `/announce` zijn standaard alleen
+`ADMIN_ROLE_IDS`. `/link`, `/unlink`, `/announce`, `/stats` en `/inactive` zijn standaard alleen
 zichtbaar voor *Server beheren*. Dat kun je per rol aanpassen onder
 Serverinstellingen → Integraties → bot.
 
@@ -83,8 +102,9 @@ rollenlijst. Anders mag de bot de rol niet toekennen.
 ### 2. API-sleutels
 
 - **Jellyseerr**: Instellingen → Algemeen → *API Key* (`JELLYSEERR_API_KEY`).
-- **Jellyfin** (alleen voor `/invite jellyfin`): Dashboard → API-sleutels → `+`
-  (`JELLYFIN_API_KEY`).
+- **Jellyfin** (voor `/invite jellyfin`, `/now-playing`, `/whats-new`,
+  `/reset-password`, het overzicht van nieuwe titels en accountbeheer):
+  Dashboard → API-sleutels → `+` (`JELLYFIN_API_KEY`).
 
 ### 3. Bot starten
 
@@ -178,9 +198,28 @@ Welk bericht gaat waarheen:
 | Goedgekeurd | | ✅ | ✅ |
 | Nu beschikbaar | | ✅ | ✅ |
 | Afgewezen | ✅ | | ✅ |
-| Mislukt, problemen (issues), test | ✅ | | |
+| Probleem opgelost | ✅ | | ✅ (aan de melder) |
+| Mislukt, overige probleemmeldingen, test | ✅ | | |
 
 `ADMIN_CHANNEL_ID` leeg? Dan gaan adminberichten naar `REQUEST_CHANNEL_ID`.
+
+Zet ook de meldingstypes voor problemen aan als je wilt dat melders een DM
+krijgen wanneer hun probleem is opgelost.
+
+### Geplande berichten
+
+| Wat | Wanneer | Waar | Instelling |
+|---|---|---|---|
+| Nieuw in Jellyfin (met posters) | elke `DIGEST_DAY` om `REPORT_TIME`, of dagelijks | `DIGEST_CHANNEL_ID`, anders `ANNOUNCE_CHANNEL_ID` | `DIGEST=weekly`, `daily` of `off` |
+| Inactieve Jellyfin-accounts | de 1e van de maand om `REPORT_TIME` | adminkanaal | `INACTIVE_DAYS` (0 = uit) |
+| Gekoppeld lid heeft de server verlaten | binnen een uur, één keer per vertrek | adminkanaal | altijd aan |
+
+De tijden gelden in de tijdzone `TZ` (standaard `Europe/Amsterdam`). Posters
+in het overzicht komen van `JELLYFIN_PUBLIC_URL`; die moet dus vanaf internet
+bereikbaar zijn, anders blijven de plaatjes leeg.
+
+Vertrekken controleert de bot elk uur per gekoppeld lid via de Discord-API.
+Daardoor is de privileged *Server Members Intent* niet nodig.
 
 ### 5. Meldingen van andere diensten (`/notify`)
 

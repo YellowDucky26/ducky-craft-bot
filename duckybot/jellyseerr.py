@@ -1,6 +1,7 @@
 """Kleine async client voor de Jellyseerr/Seerr API (v1)."""
 import asyncio
 import logging
+from datetime import datetime
 from typing import Any
 
 import aiohttp
@@ -20,6 +21,8 @@ MEDIA_STATUS = {
 }
 # MediaRequest.status
 REQUEST_STATUS = {1: "In afwachting", 2: "Goedgekeurd", 3: "Afgewezen", 4: "Mislukt", 5: "Voltooid"}
+# Issue.issueType
+ISSUE_TYPES = {1: "Beeld", 2: "Geluid", 3: "Ondertitels", 4: "Anders"}
 ACTIVE_REQUEST_STATUSES = {1, 2, 5}
 
 
@@ -112,6 +115,15 @@ class Jellyseerr:
             body["seasons"] = seasons or []
         return await self._call("POST", "/request", json=body, as_user=user_id)
 
+    async def trending(self, media_type: str = "all") -> list[dict[str, Any]]:
+        data = await self._call("GET", "/discover/trending", params={"page": 1, "mediaType": media_type, "timeWindow": "week"})
+        return [r for r in data.get("results", []) if r.get("mediaType") in ("movie", "tv")]
+
+    async def upcoming(self, media_type: str) -> list[dict[str, Any]]:
+        path = "/discover/movies/upcoming" if media_type == "movie" else "/discover/tv/upcoming"
+        data = await self._call("GET", path, params={"page": 1})
+        return [{**r, "mediaType": r.get("mediaType") or media_type} for r in data.get("results", [])]
+
     async def get_request(self, request_id: int) -> dict[str, Any]:
         return await self._call("GET", f"/request/{request_id}")
 
@@ -122,6 +134,41 @@ class Jellyseerr:
     async def user_requests(self, user_id: int, take: int = 10) -> list[dict[str, Any]]:
         data = await self._call("GET", f"/user/{user_id}/requests", params={"take": take, "skip": 0})
         return data.get("results", [])
+
+    async def request_counts(self) -> dict[str, int]:
+        return await self._call("GET", "/request/count")
+
+    async def requests_since(self, since: datetime) -> list[dict[str, Any]]:
+        """Alle aanvragen die na ``since`` zijn gedaan (nieuwste eerst, per 50 opgehaald)."""
+        found: list[dict[str, Any]] = []
+        skip = 0
+        while True:
+            data = await self._call("GET", "/request", params={"take": 50, "skip": skip, "sort": "added", "filter": "all"})
+            batch = data.get("results", [])
+            for request in batch:
+                created = datetime.fromisoformat(request["createdAt"].replace("Z", "+00:00"))
+                if created < since:
+                    return found
+                found.append(request)
+            skip += len(batch)
+            if not batch or skip >= data.get("pageInfo", {}).get("results", 0):
+                return found
+
+    async def quota(self, user_id: int) -> dict[str, Any]:
+        return await self._call("GET", f"/user/{user_id}/quota")
+
+    # --- issues ----------------------------------------------------------
+
+    async def create_issue(
+        self, user_id: int, media_id: int, issue_type: int, message: str,
+        season: int | None = None, episode: int | None = None,
+    ) -> dict[str, Any]:
+        """Meld een probleem namens een gebruiker. ``media_id`` is het Jellyseerr-media-ID (mediaInfo.id), niet TMDB."""
+        body: dict[str, Any] = {"mediaId": media_id, "issueType": issue_type, "message": message, "userId": user_id}
+        if season:
+            body["problemSeason"] = season
+            body["problemEpisode"] = episode or 0
+        return await self._call("POST", "/issue", json=body)
 
     # --- gebruikers ------------------------------------------------------
 

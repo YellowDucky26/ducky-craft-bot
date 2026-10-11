@@ -159,9 +159,11 @@ class Notifications(commands.Cog):
             await self.bot.send_to(cfg.request_channel_id, embed=embed, view=watch_view)
 
         if "dm" in notice.targets and notice.dm_text:
-            recipients = set(notice.requester_discord_ids)
-            if notice.requester:
-                recipients.update(self.bot.links.discord_ids_for(name=notice.requester))
+            # Aanvrager bij aanvragen, melder bij issues: via het Discord-ID uit Jellyseerr of de lokale koppeling.
+            recipients = set(notice.requester_discord_ids) | set(notice.reporter_discord_ids)
+            for name in (notice.requester, notice.reporter):
+                if name:
+                    recipients.update(self.bot.links.discord_ids_for(name=name))
             for user_id in recipients:
                 await self.bot.dm(user_id, content=notice.dm_text, embed=embed, view=watch_view)
 

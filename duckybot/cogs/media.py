@@ -10,6 +10,7 @@ from discord.ext import commands
 
 from ..bot import COLOR_BRAND, DuckyBot, seerr_name
 from ..jellyseerr import (
+    ISSUE_TYPES,
     MEDIA_STATUS,
     REQUEST_STATUS,
     JellyseerrError,
@@ -24,6 +25,32 @@ log = logging.getLogger(__name__)
 CHOICE_RE = re.compile(r"^(movie|tv):(\d+)$")
 TYPE_LABEL = {"movie": "🎬 Film", "tv": "📺 Serie"}
 STATUS_AVAILABLE = 5
+IN_LIBRARY = (4, 5)  # deels of helemaal beschikbaar
+
+
+def result_label(result: dict[str, Any], *, with_date: bool = False) -> str:
+    """'🎬 Dune (2021) ✅' voor lijsten en autocomplete."""
+    icon = "🎬" if result.get("mediaType") == "movie" else "📺"
+    date = result.get("releaseDate") or result.get("firstAirDate") or ""
+    if with_date and len(date) == 10:
+        when = f" · {date[8:10]}-{date[5:7]}-{date[:4]}"
+    else:
+        when = f" ({date[:4]})" if date else ""
+    label = f"{icon} {title_of(result)}{when}"
+    if (result.get("mediaInfo") or {}).get("status") == STATUS_AVAILABLE:
+        label += " ✅"
+    return label
+
+
+def quota_text(quota: dict[str, Any]) -> str:
+    lines = []
+    for key, label in (("movie", "Films"), ("tv", "Series")):
+        status = quota.get(key) or {}
+        if not status.get("limit"):
+            lines.append(f"{label}: onbeperkt")
+        else:
+            lines.append(f"{label}: nog {status.get('remaining', 0)} van {status['limit']} (per {status.get('days')} dagen)")
+    return "\n".join(lines)
 
 
 def not_linked_message(bot: DuckyBot) -> str:
@@ -82,15 +109,27 @@ class RequestView(discord.ui.View):
             blocked = status in (2, 3, 4, 5)  # onbekend (1) en verwijderd (6) mogen opnieuw
         else:
             blocked = not self.seasons
+        self.selected = list(self.seasons)
+        self.partly_there = status in (2, 3, 4, 5)
         if blocked:
             self.request_button.disabled = True
             self.request_button.label = "Al beschikbaar" if status == STATUS_AVAILABLE else "Al aangevraagd"
             self.request_button.style = discord.ButtonStyle.secondary
-        elif media_type == "tv" and status in (2, 3, 4, 5):
-            self.request_button.label = f"Ontbrekende seizoenen aanvragen ({len(self.seasons)})"
+        elif media_type == "tv":
+            if 1 < len(self.seasons) <= 25:
+                self.add_item(SeasonSelect(self.seasons))
+            self.update_label()
 
         if link := jellyfin_link(bot, media):
             self.add_item(discord.ui.Button(label="Kijk in Jellyfin", url=link))
+
+    def update_label(self) -> None:
+        if len(self.selected) == 1:
+            self.request_button.label = f"Seizoen {self.selected[0]} aanvragen"
+        elif self.selected == self.seasons and self.partly_there:
+            self.request_button.label = f"Ontbrekende seizoenen aanvragen ({len(self.selected)})"
+        else:
+            self.request_button.label = f"{len(self.selected)} seizoenen aanvragen"
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.owner_id:
@@ -98,7 +137,7 @@ class RequestView(discord.ui.View):
             return False
         return True
 
-    @discord.ui.button(label="Aanvragen", style=discord.ButtonStyle.success, emoji="📥")
+    @discord.ui.button(label="Aanvragen", style=discord.ButtonStyle.success, emoji="📥", row=1)
     async def request_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)
         user = await self.bot.resolve_seerr_user(interaction.user)
@@ -106,13 +145,15 @@ class RequestView(discord.ui.View):
             await interaction.followup.send(not_linked_message(self.bot), ephemeral=True)
             return
         try:
-            result = await self.bot.seerr.create_request(user["id"], self.media_type, self.media["id"], self.seasons)
+            result = await self.bot.seerr.create_request(user["id"], self.media_type, self.media["id"], self.selected)
         except JellyseerrError as exc:
             log.warning("Aanvraag mislukt voor %s: %s", interaction.user, exc)
             await interaction.followup.send(f"❌ Aanvragen mislukt: {exc.message}", ephemeral=True)
             return
 
-        button.disabled = True
+        for item in self.children:
+            if isinstance(item, (discord.ui.Select, discord.ui.Button)) and not getattr(item, "url", None):
+                item.disabled = True
         button.label = "Aangevraagd"
         button.style = discord.ButtonStyle.secondary
         await interaction.edit_original_response(view=self)
@@ -123,6 +164,22 @@ class RequestView(discord.ui.View):
         else:
             text = f"📨 **{title}** is aangevraagd en wacht op goedkeuring van een admin."
         await interaction.followup.send(text, ephemeral=True)
+
+
+class SeasonSelect(discord.ui.Select):
+    """Welke seizoenen aanvragen; standaard alle die nog ontbreken."""
+
+    def __init__(self, seasons: list[int]):
+        options = [discord.SelectOption(label=f"Seizoen {n}", value=str(n), default=True) for n in seasons]
+        super().__init__(placeholder="Kies seizoenen", min_values=1, max_values=len(options), options=options, row=0)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: RequestView = self.view  # type: ignore[assignment]
+        view.selected = sorted(int(v) for v in self.values)
+        for option in self.options:
+            option.default = option.value in self.values
+        view.update_label()
+        await interaction.response.edit_message(view=view)
 
 
 class ResultSelect(discord.ui.Select):
@@ -249,23 +306,130 @@ class Media(commands.Cog):
             view.add_item(ResultSelect(results))
             await interaction.followup.send(f"Resultaten voor **{titel}**:", view=view, ephemeral=True)
 
-    @aanvraag.autocomplete("titel")
-    async def aanvraag_autocomplete(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    async def title_choices(self, current: str, *, only_in_library: bool = False) -> list[app_commands.Choice[str]]:
         if len(current.strip()) < 2:
             return []
         try:
             results = await asyncio.wait_for(self.bot.seerr.search(current), timeout=2.5)
         except (JellyseerrError, asyncio.TimeoutError):
             return []
-        choices = []
-        for r in results[:25]:
-            year = year_of(r)
-            icon = "🎬" if r["mediaType"] == "movie" else "📺"
-            name = f"{icon} {title_of(r)}" + (f" ({year})" if year else "")
-            if (r.get("mediaInfo") or {}).get("status") == STATUS_AVAILABLE:
-                name += " ✅"
-            choices.append(app_commands.Choice(name=name[:100], value=f"{r['mediaType']}:{r['id']}"))
-        return choices
+        if only_in_library:
+            results = [r for r in results if (r.get("mediaInfo") or {}).get("status") in IN_LIBRARY]
+        return [
+            app_commands.Choice(name=result_label(r)[:100], value=f"{r['mediaType']}:{r['id']}") for r in results[:25]
+        ]
+
+    @aanvraag.autocomplete("titel")
+    async def aanvraag_autocomplete(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+        return await self.title_choices(current)
+
+    # --- /trending en /upcoming -------------------------------------------
+
+    async def show_list(self, interaction: discord.Interaction, heading: str, fetch, *, with_date: bool = False) -> None:
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        try:
+            results = await fetch()
+        except JellyseerrError as exc:
+            await interaction.followup.send(f"❌ Ophalen mislukt: {exc.message}", ephemeral=True)
+            return
+        if not results:
+            await interaction.followup.send("Niets gevonden.", ephemeral=True)
+            return
+        lines = [f"`{i:>2}.` {result_label(r, with_date=with_date)}" for i, r in enumerate(results[:15], 1)]
+        embed = discord.Embed(title=heading, description="\n".join(lines), color=COLOR_BRAND)
+        embed.set_footer(text="Kies hieronder een titel om hem te bekijken of aan te vragen.")
+        view = discord.ui.View(timeout=300)
+        view.add_item(ResultSelect(results[:25]))
+        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+
+    @app_commands.command(name="trending", description="Popular movies and series this week")
+    @app_commands.rename(soort="type")
+    @app_commands.describe(soort="Movies, series or both")
+    @app_commands.choices(soort=[
+        app_commands.Choice(name="Movies and series", value="all"),
+        app_commands.Choice(name="Movies", value="movie"),
+        app_commands.Choice(name="Series", value="tv"),
+    ])
+    async def trending(self, interaction: discord.Interaction, soort: str = "all") -> None:
+        await self.show_list(interaction, "🔥 Populair deze week", lambda: self.bot.seerr.trending(soort))
+
+    @app_commands.command(name="upcoming", description="Movies and series coming out soon")
+    @app_commands.rename(soort="type")
+    @app_commands.describe(soort="Movies or series")
+    @app_commands.choices(soort=[
+        app_commands.Choice(name="Movies", value="movie"),
+        app_commands.Choice(name="Series", value="tv"),
+    ])
+    async def upcoming(self, interaction: discord.Interaction, soort: str = "movie") -> None:
+        heading = "📅 Binnenkort in de bioscoop" if soort == "movie" else "📅 Binnenkort op tv"
+        await self.show_list(interaction, heading, lambda: self.bot.seerr.upcoming(soort), with_date=True)
+
+    # --- /issue ----------------------------------------------------------
+
+    @app_commands.command(name="issue", description="Report a problem with a movie or episode")
+    @app_commands.rename(titel="title", soort="type", omschrijving="description", seizoen="season", aflevering="episode")
+    @app_commands.describe(
+        titel="Start typing and pick a title from the list",
+        soort="What is wrong?",
+        omschrijving="Describe the problem",
+        seizoen="Series only: which season",
+        aflevering="Series only: which episode",
+    )
+    @app_commands.choices(soort=[
+        app_commands.Choice(name="Video", value=1),
+        app_commands.Choice(name="Audio", value=2),
+        app_commands.Choice(name="Subtitles", value=3),
+        app_commands.Choice(name="Other", value=4),
+    ])
+    async def issue(
+        self,
+        interaction: discord.Interaction,
+        titel: str,
+        soort: int,
+        omschrijving: app_commands.Range[str, 3, 1000],
+        seizoen: app_commands.Range[int, 1, 100] | None = None,
+        aflevering: app_commands.Range[int, 1, 1000] | None = None,
+    ) -> None:
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        match = CHOICE_RE.match(titel)
+        if match is None:
+            await interaction.followup.send("Kies een titel uit de lijst die verschijnt tijdens het typen.", ephemeral=True)
+            return
+        user = await self.bot.resolve_seerr_user(interaction.user)
+        if user is None:
+            await interaction.followup.send(not_linked_message(self.bot), ephemeral=True)
+            return
+        media_type = match[1]
+        try:
+            media = await self.bot.seerr.media(media_type, int(match[2]))
+            media_id = (media.get("mediaInfo") or {}).get("id")
+            if not media_id or media["mediaInfo"].get("status") not in IN_LIBRARY:
+                await interaction.followup.send(
+                    f"**{title_of(media)}** staat niet in Jellyfin; je kunt alleen problemen melden bij titels die er staan.",
+                    ephemeral=True,
+                )
+                return
+            issue = await self.bot.seerr.create_issue(
+                user["id"], media_id, soort, omschrijving,
+                season=seizoen if media_type == "tv" else None,
+                episode=aflevering if media_type == "tv" else None,
+            )
+        except JellyseerrError as exc:
+            await interaction.followup.send(f"❌ Melden mislukt: {exc.message}", ephemeral=True)
+            return
+        where = ""
+        if media_type == "tv" and seizoen:
+            where = f" (seizoen {seizoen}" + (f", aflevering {aflevering})" if aflevering else ")")
+        url = f"{self.bot.config.jellyseerr_public_url}/issues/{issue['id']}"
+        await interaction.followup.send(
+            f"🐞 Probleem ({ISSUE_TYPES[soort].lower()}) gemeld bij **{title_of(media)}**{where}.\n"
+            f"Je krijgt een DM zodra het is opgelost. [Bekijk de melding]({url})",
+            ephemeral=True,
+        )
+
+    @issue.autocomplete("titel")
+    async def issue_autocomplete(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+        return await self.title_choices(current, only_in_library=True)
 
     # --- /my-requests ----------------------------------------------------
 
@@ -302,6 +466,10 @@ class Media(commands.Cog):
 
         lines = await asyncio.gather(*(describe(r) for r in requests))
         embed = discord.Embed(title="Je laatste aanvragen", description="\n".join(lines), color=COLOR_BRAND)
+        try:
+            embed.add_field(name="Je limiet", value=quota_text(await self.bot.seerr.quota(user["id"])), inline=False)
+        except JellyseerrError as exc:
+            log.info("Quota ophalen mislukt: %s", exc)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     # --- koppelen --------------------------------------------------------

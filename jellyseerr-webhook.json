@@ -19,7 +19,9 @@
   "{{issue}}": {
     "issue_id": "{{issue_id}}",
     "issue_type": "{{issue_type}}",
-    "reportedBy_username": "{{reportedBy_username}}"
+    "reportedBy_username": "{{reportedBy_username}}",
+    "reportedBy_settings_discordIds": "{{reportedBy_settings_discordIds}}",
+    "reportedBy_settings_discordId": "{{reportedBy_settings_discordId}}"
   },
   "{{comment}}": {
     "comment_message": "{{comment_message}}",

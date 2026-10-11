@@ -10,11 +10,17 @@ from . import __version__
 from .config import Config
 from .jellyfin import Jellyfin
 from .jellyseerr import Jellyseerr
-from .storage import LinkStore
+from .storage import LinkStore, StateStore
 
 log = logging.getLogger(__name__)
 
-EXTENSIONS = ("duckybot.cogs.media", "duckybot.cogs.invites", "duckybot.cogs.notifications")
+EXTENSIONS = (
+    "duckybot.cogs.media",
+    "duckybot.cogs.invites",
+    "duckybot.cogs.notifications",
+    "duckybot.cogs.library",
+    "duckybot.cogs.accounts",
+)
 
 COLOR_BRAND = 0xF5C518   # eend-geel
 COLOR_OK = 0x57F287
@@ -43,6 +49,7 @@ class DuckyBot(commands.Bot):
         super().__init__(command_prefix=commands.when_mentioned, intents=discord.Intents.default())
         self.config = config
         self.links = LinkStore(config.data_dir)
+        self.state = StateStore(config.data_dir)
         self.http_session: aiohttp.ClientSession | None = None
         self.seerr: Jellyseerr
         self.jellyfin: Jellyfin | None = None
@@ -145,6 +152,17 @@ class DuckyBot(commands.Bot):
         if found:
             self.links.set(user.id, found["id"], seerr_name(found))
         return found
+
+    async def jellyfin_user_id(self, seerr_id: int) -> str | None:
+        """Het Jellyfin-gebruikers-ID achter een Jellyseerr-account, als dat een Jellyfin-account is."""
+        user = await self.seerr.user(seerr_id)
+        if user.get("jellyfinUserId"):
+            return user["jellyfinUserId"]
+        if self.jellyfin and (name := user.get("jellyfinUsername")):
+            for jf_user in await self.jellyfin.users():
+                if jf_user.get("Name", "").casefold() == name.casefold():
+                    return jf_user["Id"]
+        return None
 
     # --- berichten -------------------------------------------------------
 
