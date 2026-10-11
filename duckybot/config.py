@@ -43,7 +43,7 @@ class Config:
     jellyfin_public_url: str = ""
 
     # Rollen: admins mogen alles (goedkeuren, meldingen, koppelen, invites);
-    # invite-rollen mogen alleen /invite gebruiken.
+    # invite-rollen mogen alleen /invite discord gebruiken.
     admin_role_ids: frozenset[int] = field(default_factory=frozenset)
     invite_role_ids: frozenset[int] = field(default_factory=frozenset)
     # Optioneel: rol die iemand krijgt zodra er een Jellyfin-account voor is gemaakt.

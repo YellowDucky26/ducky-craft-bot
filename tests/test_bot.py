@@ -663,3 +663,18 @@ async def test_jellyfin_disable_keeps_policy(fake_jellyfin):
     jellyfin, state = fake_jellyfin
     await jellyfin.set_disabled("u1")
     assert state["policies"]["u1"] == {"IsAdministrator": False, "EnableAllFolders": True, "IsDisabled": True}
+
+
+async def test_invite_jellyfin_is_admin_only(tmp_path):
+    bot = FakeBot(make_config(tmp_path))
+    bot.is_admin = lambda user: False
+    bot.jellyfin = object()  # mag niet gebruikt worden
+    sent = []
+
+    async def send_message(text, **kwargs):
+        sent.append(text)
+
+    interaction = SimpleNamespace(user=SimpleNamespace(id=1), response=SimpleNamespace(send_message=send_message))
+    cog = Invites(bot)
+    await cog.jellyfin_invite.callback(cog, interaction, SimpleNamespace(id=2, bot=False), None)
+    assert sent == ["Alleen admins kunnen Jellyfin-accounts aanmaken."]

@@ -53,7 +53,7 @@ Zusterproject van
 | `/reset-password [member]` | iedereen | Nieuw tijdelijk Jellyfin-wachtwoord per DM. Admins kunnen een `member` opgeven. Werkt niet voor Jellyfin-beheerders. |
 | `/my-account` | iedereen | Aan welk Jellyseerr-account ben je gekoppeld? Met een knop om je e-mailadres in te vullen of te wijzigen. |
 | `/invite discord [max_uses] [expires]` | invite-rol / admin | Invitelink, standaard 1× te gebruiken en 1 dag geldig. |
-| `/invite jellyfin member: [username]` | invite-rol / admin | Jellyfin-account voor een lid. |
+| `/invite jellyfin member: [username]` | admin | Jellyfin-account voor een lid. |
 | `/link member: user:` | admin | Discord-lid handmatig aan een Jellyseerr-account koppelen. Het lid krijgt een DM om zelf een e-mailadres in te vullen. |
 | `/unlink member:` | admin | Koppeling verwijderen. |
 | `/announce [channel] [ping]` | admin | Aankondiging versturen; titel en tekst vul je in een venster in. |

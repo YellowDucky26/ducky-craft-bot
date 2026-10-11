@@ -89,6 +89,9 @@ class Invites(commands.GroupCog, group_name="invite", group_description="Invite 
     async def jellyfin_invite(
         self, interaction: discord.Interaction, lid: discord.Member, gebruikersnaam: str | None = None
     ) -> None:
+        if not self.bot.is_admin(interaction.user):
+            await interaction.response.send_message("Alleen admins kunnen Jellyfin-accounts aanmaken.", ephemeral=True)
+            return
         jellyfin = self.bot.jellyfin
         if jellyfin is None:
             await interaction.response.send_message("Jellyfin is niet geconfigureerd voor deze bot.", ephemeral=True)
