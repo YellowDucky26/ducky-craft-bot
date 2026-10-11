@@ -7,7 +7,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from ..bot import COLOR_BRAND, COLOR_INFO, DuckyBot, seerr_name
+from ..bot import BOT_NAME, COLOR_BRAND, COLOR_INFO, DuckyBot, seerr_name
 from ..jellyfin import JellyfinError
 from ..jellyseerr import JellyseerrError
 from .media import email_view
@@ -148,6 +148,7 @@ class Invites(commands.GroupCog, group_name="invite", group_description="Invite 
         welcome = discord.Embed(
             title="🦆 Welkom bij Ducky-Craft media!",
             description=(
+                f"Kwak! Ik ben **{BOT_NAME}**, de mediabot van Ducky-Craft.\n"
                 f"Er is een Jellyfin-account voor je aangemaakt door {interaction.user.mention}.\n"
                 "Wijzig je wachtwoord na het eerste inloggen."
             ),

@@ -11,7 +11,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
-from ..bot import COLOR_BRAND, COLOR_ERROR, COLOR_INFO, COLOR_WARN, DuckyBot, seerr_name
+from ..bot import BOT_NAME, COLOR_BRAND, COLOR_ERROR, COLOR_INFO, COLOR_WARN, DuckyBot, seerr_name
 from ..jellyfin import JellyfinError, parse_date
 from ..jellyseerr import JellyseerrError
 from .library import report_time
@@ -375,7 +375,7 @@ class Accounts(commands.Cog):
         cfg = self.bot.config
         now = datetime.now(cfg.tz)
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        embed = discord.Embed(title="📊 Ducky-Craft media", color=COLOR_BRAND, timestamp=now)
+        embed = discord.Embed(title=f"📊 {BOT_NAME} · Ducky-Craft media", color=COLOR_BRAND, timestamp=now)
 
         try:
             counts = await self.bot.seerr.request_counts()

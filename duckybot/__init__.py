@@ -1,4 +1,4 @@
-"""Ducky-Craft Discord-bot."""
+"""Kwakkel, de Discord-bot van Ducky-Craft."""
 import os
 
 # Wordt bij het bouwen van de Docker-image gezet (release-tag of commit).

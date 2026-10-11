@@ -22,6 +22,8 @@ EXTENSIONS = (
     "duckybot.cogs.accounts",
 )
 
+BOT_NAME = "Kwakkel"
+
 COLOR_BRAND = 0xF5C518   # eend-geel
 COLOR_OK = 0x57F287
 COLOR_INFO = 0x3498DB

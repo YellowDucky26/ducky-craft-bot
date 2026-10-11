@@ -37,7 +37,7 @@ class Jellyfin:
         self._session = session
         self._base = base_url
         self._headers = {
-            "Authorization": f'MediaBrowser Client="ducky-craft-bot", Token="{api_key}"',
+            "Authorization": f'MediaBrowser Client="Kwakkel", Token="{api_key}"',
             "Accept": "application/json",
         }
 

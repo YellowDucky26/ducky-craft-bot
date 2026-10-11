@@ -8,7 +8,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
-from ..bot import COLOR_BRAND, DuckyBot
+from ..bot import BOT_NAME, COLOR_BRAND, DuckyBot
 from ..jellyfin import JellyfinError, details_url, image_url
 
 log = logging.getLogger(__name__)
@@ -174,7 +174,7 @@ class Library(commands.Cog):
             await interaction.followup.send(f"❌ Jellyfin niet bereikbaar: {exc}", ephemeral=True)
             return
         if not sessions:
-            await interaction.followup.send("Er kijkt nu niemand. 🦆💤", ephemeral=True)
+            await interaction.followup.send(f"Er kijkt nu niemand; {BOT_NAME} doet even een dutje. 🦆💤", ephemeral=True)
             return
         embed = discord.Embed(
             title=f"Nu aan het kijken ({len(sessions)})",

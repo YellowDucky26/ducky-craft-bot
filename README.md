@@ -1,10 +1,10 @@
-# ducky-craft-bot
+# Kwakkel 🦆
 
 [![Docker](https://github.com/YellowDucky26/ducky-craft-bot/actions/workflows/docker.yml/badge.svg)](https://github.com/YellowDucky26/ducky-craft-bot/actions/workflows/docker.yml)
 [![Release](https://img.shields.io/github/v/release/YellowDucky26/ducky-craft-bot)](https://github.com/YellowDucky26/ducky-craft-bot/releases)
 
-Discord-bot voor de **Ducky-Craft**-server. Hij koppelt Discord aan
-Jellyseerr en Jellyfin:
+**Kwakkel** is de Discord-bot van de **Ducky-Craft**-server (repo: `ducky-craft-bot`).
+Hij koppelt Discord aan Jellyseerr en Jellyfin:
 
 - **Media aanvragen** met `/request`: zoeken met autocomplete, een kaart met
   poster en status, en één klik op *Aanvragen*. Bij series kies je welke
