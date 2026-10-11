@@ -275,8 +275,8 @@ def test_slash_commands_are_english(tmp_path):
 
 
 def test_presence_text():
-    assert presence_text(1) == "1 lid online"
-    assert presence_text(12) == "12 leden online"
+    assert presence_text(1) == "Kijkt naar 1 online lid"
+    assert presence_text(12) == "Kijkt naar 12 online leden"
 
 
 # --- opslag ----------------------------------------------------------------------

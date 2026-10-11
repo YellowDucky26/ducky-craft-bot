@@ -35,7 +35,7 @@ def seerr_name(user: dict[str, Any]) -> str:
 
 
 def presence_text(online: int) -> str:
-    return "1 lid online" if online == 1 else f"{online} leden online"
+    return "Kijkt naar 1 online lid" if online == 1 else f"Kijkt naar {online} online leden"
 
 
 class DuckyBot(commands.Bot):
@@ -87,7 +87,11 @@ class DuckyBot(commands.Bot):
 
     @tasks.loop(minutes=5)
     async def update_presence(self) -> None:
-        """Status 'Kijkt naar X leden online'. Het aantal komt van Discord zelf, zonder presence-intent."""
+        """Status 'Kijkt naar X online leden'. Het aantal komt van Discord zelf, zonder presence-intent.
+
+        Een eigen status (custom) i.p.v. ActivityType.watching: van 'watching' toont Discord in de
+        ledenlijst alleen de naam, zonder 'Kijkt naar'.
+        """
         try:
             guild = await self.fetch_guild(self.config.guild_id, with_counts=True)
         except discord.HTTPException as exc:
@@ -96,7 +100,7 @@ class DuckyBot(commands.Bot):
         online = guild.approximate_presence_count or 0
         name = presence_text(online)
         if name != self._presence_text:
-            await self.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=name))
+            await self.change_presence(activity=discord.CustomActivity(name=name))
             self._presence_text = name
 
     async def on_app_command_error(

@@ -22,7 +22,7 @@ Jellyseerr en Jellyfin:
   - `POST /notify` zodat andere diensten (Minecraft-server, scripts, ...) via
     de bot een bericht kunnen sturen.
 - **Status**: de bot laat zien hoeveel leden er online zijn (*Kijkt naar 12
-  leden online*), elke 5 minuten bijgewerkt.
+  online leden*), elke 5 minuten bijgewerkt.
 
 Zusterproject van
 [proxmox-discord-relay](https://github.com/YellowDucky26/proxmox-discord-relay) en
