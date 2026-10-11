@@ -137,10 +137,31 @@ class Notifications(commands.Cog):
             return f"{base}/web/#/details?id={notice.jellyfin_item_id}"
         return None
 
+    def people_for(self, notice: Notice) -> set[int]:
+        """Discord-leden om wie het gaat: de aanvrager, of bij issues de melder.
+
+        Via het Discord-ID uit Jellyseerr en via de lokale koppeling. Wie zelf reageert valt af,
+        net als de bot zelf (bv. als die per ongeluk in een Jellyseerr-profiel staat).
+        """
+        people = set(notice.requester_discord_ids) | set(notice.reporter_discord_ids)
+        for name in (notice.requester, notice.reporter):
+            if name:
+                people.update(self.bot.links.discord_ids_for(name=name))
+        people -= set(notice.commenter_discord_ids)
+        if notice.commenter:
+            people -= set(self.bot.links.discord_ids_for(name=notice.commenter))
+        if me := getattr(self.bot, "user", None):
+            people.discard(me.id)
+        return people
+
     async def handle_seerr_webhook(self, payload: dict[str, Any]) -> Notice:
         notice = parse_seerr_payload(payload)
         cfg = self.bot.config
         embed = self.build_embed(notice)
+        people = self.people_for(notice)
+        # In het kanaal de aanvrager of melder pingen; alleen die, nooit rollen of @everyone.
+        ping = " ".join(f"<@{user_id}>" for user_id in sorted(people)) or None
+        ping_allowed = discord.AllowedMentions(users=[discord.Object(user_id) for user_id in people], roles=False, everyone=False)
 
         watch_view = None
         if link := self.jellyfin_url(notice):
@@ -153,28 +174,21 @@ class Notifications(commands.Cog):
                 view = discord.ui.View(timeout=None)
                 view.add_item(RequestDecisionButton("approve", notice.request_id))
                 view.add_item(RequestDecisionButton("decline", notice.request_id))
-            await self.bot.send_to(cfg.admin_channel_id or cfg.request_channel_id, embed=embed, view=view)
+            await self.bot.send_to(cfg.admin_channel_id or cfg.request_channel_id, content=ping, embed=embed, view=view,
+                                   allowed_mentions=ping_allowed)
 
         if "public" in notice.targets:
-            await self.bot.send_to(cfg.request_channel_id, embed=embed, view=watch_view)
+            await self.bot.send_to(cfg.request_channel_id, content=ping, embed=embed, view=watch_view,
+                                   allowed_mentions=ping_allowed)
 
         if "dm" in notice.targets and notice.dm_text:
-            # Aanvrager bij aanvragen, melder bij issues: via het Discord-ID uit Jellyseerr of de lokale koppeling.
-            recipients = set(notice.requester_discord_ids) | set(notice.reporter_discord_ids)
-            for name in (notice.requester, notice.reporter):
-                if name:
-                    recipients.update(self.bot.links.discord_ids_for(name=name))
-            # Wie zelf reageert, hoeft daar geen DM over te krijgen.
-            recipients -= set(notice.commenter_discord_ids)
-            if notice.commenter:
-                recipients -= set(self.bot.links.discord_ids_for(name=notice.commenter))
             dm_view = watch_view
             if notice.issue_id:
                 dm_view = discord.ui.View()
                 dm_view.add_item(discord.ui.Button(
                     label="Bekijk melding", url=f"{cfg.jellyseerr_public_url}/issues/{notice.issue_id}"
                 ))
-            for user_id in recipients:
+            for user_id in people:
                 await self.bot.dm(user_id, content=notice.dm_text, embed=embed, view=dm_view)
 
         log.info("Jellyseerr-melding %s verwerkt (%s)", notice.notification_type, notice.title)

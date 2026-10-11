@@ -732,3 +732,27 @@ async def test_rejected_webhook_is_logged(tmp_path, aiohttp_client, caplog):
     resp = await client.post("/webhook/jellyseerr", json={}, headers={"Authorization": "fout"})
     assert resp.status == 401
     assert "Geweigerd: POST /webhook/jellyseerr" in caplog.text
+
+
+async def test_bot_itself_never_gets_dm_or_ping(tmp_path):
+    """Zoals op raptor: de bot per ongeluk gekoppeld aan 'Ruben' en zijn ID in diens Jellyseerr-profiel."""
+    bot = FakeBot(make_config(tmp_path))
+    bot.user = SimpleNamespace(id=1558926482137419786)
+    bot.links.set(770736906187046934, 11, "Ruben")
+    bot.links.set(1558926482137419786, 11, "Ruben")
+    values = issue_values("ISSUE_RESOLVED", reportedBy_username="Ruben",
+                          reportedBy_settings_discordIds="1558926482137419786")
+    await Notifications(bot).handle_seerr_webhook(render_issue(values))
+    assert [u for u, _ in bot.dms] == [770736906187046934]
+    channel, message = bot.sent[0]
+    assert message["content"] == "<@770736906187046934>"
+    assert [u.id for u in message["allowed_mentions"].users] == [770736906187046934]
+
+
+async def test_channel_post_pings_requester(tmp_path):
+    bot = FakeBot(make_config(tmp_path))
+    await Notifications(bot).handle_seerr_webhook(render_like_seerr(TEMPLATE, SEERR_VALUES))
+    message = bot.sent[0][1]
+    assert message["content"] == "<@123456789012345678> <@223456789012345678>"
+    allowed = message["allowed_mentions"]
+    assert allowed.everyone is False and allowed.roles is False

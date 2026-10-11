@@ -493,6 +493,9 @@ class Media(commands.Cog):
         if not self.bot.is_admin(interaction.user):
             await interaction.response.send_message("Alleen admins kunnen dit.", ephemeral=True)
             return
+        if lid.bot:
+            await interaction.response.send_message("Bots kun je niet koppelen 🤖 Kies het Discord-lid zelf.", ephemeral=True)
+            return
         await interaction.response.defer(ephemeral=True, thinking=True)
         try:
             user = await self.bot.seerr.user(int(gebruiker))

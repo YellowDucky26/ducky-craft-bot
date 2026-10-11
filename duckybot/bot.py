@@ -63,6 +63,10 @@ class DuckyBot(commands.Bot):
     async def setup_hook(self) -> None:
         from .web import start_web_server
 
+        # Opruimen: een koppeling aan de bot zelf (per ongeluk via /link) laat DM's mislukken.
+        if self.user and self.links.remove(self.user.id):
+            log.warning("Koppeling van de bot zelf (%s) verwijderd; koppel het juiste lid opnieuw met /link", self.user.id)
+
         self.http_session = aiohttp.ClientSession()
         self.seerr = Jellyseerr(self.http_session, self.config.jellyseerr_url, self.config.jellyseerr_api_key)
         if self.config.jellyfin_enabled:
@@ -191,6 +195,9 @@ class DuckyBot(commands.Bot):
     async def dm(self, user_id: int, **kwargs) -> bool:
         try:
             user = self.get_user(user_id) or await self.fetch_user(user_id)
+            if user.bot:  # ook de bot zelf: die kan zichzelf geen DM sturen
+                log.warning("Geen DM naar %s: dat is een bot. Staat er een bot gekoppeld of in een Jellyseerr-profiel?", user_id)
+                return False
             await user.send(**kwargs)
             return True
         except discord.HTTPException as exc:
