@@ -13,11 +13,12 @@ from ..jellyseerr import JellyseerrError
 
 log = logging.getLogger(__name__)
 
+# Nederlandse naam (in het antwoord) -> (Engelse keuze in het commando, seconden)
 DURATIONS = {
-    "1 uur": 3600,
-    "1 dag": 86400,
-    "7 dagen": 604800,
-    "Nooit": 0,
+    "1 uur": ("1 hour", 3600),
+    "1 dag": ("1 day", 86400),
+    "7 dagen": ("7 days", 604800),
+    "Nooit": ("Never", 0),
 }
 
 
@@ -26,7 +27,7 @@ def username_for(member: discord.abc.User) -> str:
     return name or f"user{member.id}"
 
 
-class Invites(commands.GroupCog, group_name="invite", group_description="Nodig iemand uit"):
+class Invites(commands.GroupCog, group_name="invite", group_description="Invite someone"):
     def __init__(self, bot: DuckyBot):
         self.bot = bot
         super().__init__()
@@ -46,9 +47,10 @@ class Invites(commands.GroupCog, group_name="invite", group_description="Nodig i
 
     # --- /invite discord -------------------------------------------------
 
-    @app_commands.command(name="discord", description="Maak een uitnodigingslink voor deze Discord-server")
-    @app_commands.describe(max_gebruik="Hoe vaak de link gebruikt mag worden (0 = onbeperkt)", geldig="Hoe lang de link geldig is")
-    @app_commands.choices(geldig=[app_commands.Choice(name=k, value=k) for k in DURATIONS])
+    @app_commands.command(name="discord", description="Create an invite link for this Discord server")
+    @app_commands.rename(max_gebruik="max_uses", geldig="expires")
+    @app_commands.describe(max_gebruik="How often the link can be used (0 = unlimited)", geldig="How long the link stays valid")
+    @app_commands.choices(geldig=[app_commands.Choice(name=label, value=k) for k, (label, _) in DURATIONS.items()])
     async def discord_invite(
         self,
         interaction: discord.Interaction,
@@ -62,7 +64,7 @@ class Invites(commands.GroupCog, group_name="invite", group_description="Nodig i
         try:
             invite = await channel.create_invite(
                 max_uses=max_gebruik,
-                max_age=DURATIONS.get(geldig, 86400),
+                max_age=DURATIONS.get(geldig, ("", 86400))[1],
                 unique=True,
                 reason=f"Aangemaakt door {interaction.user} via /invite discord",
             )
@@ -80,8 +82,9 @@ class Invites(commands.GroupCog, group_name="invite", group_description="Nodig i
 
     # --- /invite jellyfin ------------------------------------------------
 
-    @app_commands.command(name="jellyfin", description="Maak een Jellyfin-account aan voor een lid")
-    @app_commands.describe(lid="Voor wie is het account?", gebruikersnaam="Optioneel; standaard de Discord-naam")
+    @app_commands.command(name="jellyfin", description="Create a Jellyfin account for a member")
+    @app_commands.rename(lid="member", gebruikersnaam="username")
+    @app_commands.describe(lid="Who is the account for?", gebruikersnaam="Optional; defaults to their Discord name")
     async def jellyfin_invite(
         self, interaction: discord.Interaction, lid: discord.Member, gebruikersnaam: str | None = None
     ) -> None:
@@ -96,7 +99,7 @@ class Invites(commands.GroupCog, group_name="invite", group_description="Nodig i
 
         if self.bot.links.get(lid.id):
             await interaction.followup.send(
-                f"{lid.mention} is al gekoppeld aan een account. Gebruik `/ontkoppel` als dat niet klopt.",
+                f"{lid.mention} is al gekoppeld aan een account. Gebruik `/unlink` als dat niet klopt.",
                 ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
             )
             return
@@ -106,7 +109,7 @@ class Invites(commands.GroupCog, group_name="invite", group_description="Nodig i
         try:
             if await jellyfin.user_exists(name):
                 await interaction.followup.send(
-                    f"Er bestaat al een Jellyfin-gebruiker **{name}**. Kies een andere `gebruikersnaam`.", ephemeral=True
+                    f"Er bestaat al een Jellyfin-gebruiker **{name}**. Kies een andere `username`.", ephemeral=True
                 )
                 return
             jf_user = await jellyfin.create_user(name, password)
@@ -149,7 +152,7 @@ class Invites(commands.GroupCog, group_name="invite", group_description="Nodig i
         welcome.add_field(name="Kijken", value=cfg.jellyfin_public_url or "-", inline=False)
         welcome.add_field(
             name="Iets aanvragen",
-            value=f"Gebruik `/aanvraag` in de server, of log met je Jellyfin-account in op {cfg.jellyseerr_public_url}",
+            value=f"Gebruik `/request` in de server, of log met je Jellyfin-account in op {cfg.jellyseerr_public_url}",
             inline=False,
         )
         delivered = await self.bot.dm(lid.id, embed=welcome)

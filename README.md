@@ -6,7 +6,7 @@
 Discord-bot voor de **Ducky-Craft**-server. Hij koppelt Discord aan
 Jellyseerr en Jellyfin:
 
-- **Media aanvragen** met `/aanvraag`: zoeken met autocomplete, een kaart met
+- **Media aanvragen** met `/request`: zoeken met autocomplete, een kaart met
   poster en status, en één klik op *Aanvragen*. De aanvraag komt in Jellyseerr
   op naam van de juiste gebruiker, met diens eigen rechten, quota en
   auto-approve.
@@ -18,9 +18,11 @@ Jellyseerr en Jellyfin:
     adminkanaal met de knoppen **Goedkeuren** en **Afwijzen**. *Goedgekeurd* en
     *Nu beschikbaar* komen in het aanvraagkanaal en gaan ook per DM naar de
     aanvrager, met een knop *Kijk in Jellyfin*.
-  - `/melding` voor aankondigingen, met een optionele rol- of @everyone-ping.
+  - `/announce` voor aankondigingen, met een optionele rol- of @everyone-ping.
   - `POST /notify` zodat andere diensten (Minecraft-server, scripts, ...) via
     de bot een bericht kunnen sturen.
+- **Status**: de bot laat zien hoeveel leden er online zijn (*Kijkt naar 12
+  leden online*), elke 5 minuten bijgewerkt.
 
 Zusterproject van
 [proxmox-discord-relay](https://github.com/YellowDucky26/proxmox-discord-relay) en
@@ -30,17 +32,17 @@ Zusterproject van
 
 | Commando | Wie | Wat |
 |---|---|---|
-| `/aanvraag titel:` | iedereen | Film of serie zoeken en aanvragen. Bij series worden alle ontbrekende seizoenen aangevraagd. |
-| `/mijn-aanvragen` | iedereen | Je laatste 10 aanvragen met status. |
-| `/koppeling` | iedereen | Aan welk Jellyseerr-account ben je gekoppeld? |
-| `/invite discord [max_gebruik] [geldig]` | invite-rol / admin | Invitelink, standaard 1× te gebruiken en 1 dag geldig. |
-| `/invite jellyfin lid: [gebruikersnaam]` | invite-rol / admin | Jellyfin-account voor een lid. |
-| `/koppel lid: gebruiker:` | admin | Discord-lid handmatig aan een Jellyseerr-account koppelen. |
-| `/ontkoppel lid:` | admin | Koppeling verwijderen. |
-| `/melding [kanaal] [ping]` | admin | Aankondiging versturen; titel en tekst vul je in een venster in. |
+| `/request title:` | iedereen | Film of serie zoeken en aanvragen. Bij series worden alle ontbrekende seizoenen aangevraagd. |
+| `/my-requests` | iedereen | Je laatste 10 aanvragen met status. |
+| `/my-account` | iedereen | Aan welk Jellyseerr-account ben je gekoppeld? |
+| `/invite discord [max_uses] [expires]` | invite-rol / admin | Invitelink, standaard 1× te gebruiken en 1 dag geldig. |
+| `/invite jellyfin member: [username]` | invite-rol / admin | Jellyfin-account voor een lid. |
+| `/link member: user:` | admin | Discord-lid handmatig aan een Jellyseerr-account koppelen. |
+| `/unlink member:` | admin | Koppeling verwijderen. |
+| `/announce [channel] [ping]` | admin | Aankondiging versturen; titel en tekst vul je in een venster in. |
 
 **Admin** is iedereen met het recht *Server beheren* of een rol uit
-`ADMIN_ROLE_IDS`. `/koppel`, `/ontkoppel` en `/melding` zijn standaard alleen
+`ADMIN_ROLE_IDS`. `/link`, `/unlink` en `/announce` zijn standaard alleen
 zichtbaar voor *Server beheren*. Dat kun je per rol aanpassen onder
 Serverinstellingen → Integraties → bot.
 
@@ -53,7 +55,7 @@ Jellyseerr-gebruiker bij een Discord-lid op deze manieren, in deze volgorde:
 2. Het Discord-ID in het Jellyseerr-profiel (*Profiel → Instellingen →
    Notificaties → Discord*). Leden kunnen dit zelf invullen.
 3. Wie via `/invite jellyfin` binnenkomt, wordt automatisch gekoppeld.
-4. Een admin koppelt met `/koppel`. Dat zet het Discord-ID ook meteen in het
+4. Een admin koppelt met `/link`. Dat zet het Discord-ID ook meteen in het
    Jellyseerr-profiel.
 
 Zonder koppeling legt de bot uit hoe je die maakt. Er wordt dan niets op

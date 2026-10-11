@@ -1,4 +1,4 @@
-"""Notificaties: Jellyseerr-webhooks, /melding en het generieke /notify-endpoint."""
+"""Notificaties: Jellyseerr-webhooks, /announce en het generieke /notify-endpoint."""
 import logging
 import re
 from typing import Any
@@ -190,10 +190,11 @@ class Notifications(commands.Cog):
         channel_id = int(payload.get("channel_id") or self.bot.config.announce_channel_id or self.bot.config.request_channel_id)
         return await self.bot.send_to(channel_id, content=content, embed=embed, allowed_mentions=allowed) is not None
 
-    # --- /melding --------------------------------------------------------
+    # --- /announce -------------------------------------------------------
 
-    @app_commands.command(name="melding", description="(Admin) Verstuur een aankondiging")
-    @app_commands.describe(kanaal="Standaard het aankondigingskanaal", ping="Optioneel een rol (of @everyone) om te pingen")
+    @app_commands.command(name="announce", description="(Admin) Send an announcement")
+    @app_commands.rename(kanaal="channel")
+    @app_commands.describe(kanaal="Defaults to the announcement channel", ping="Optional role (or @everyone) to ping")
     @app_commands.default_permissions(manage_guild=True)
     async def melding(
         self,

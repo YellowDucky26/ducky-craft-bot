@@ -4,9 +4,13 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import aiohttp
+import discord
 import pytest
 from aiohttp import web
 
+from duckybot.bot import presence_text
+from duckybot.cogs.invites import Invites
+from duckybot.cogs.media import Media
 from duckybot.cogs.notifications import Notifications, parse_color
 from duckybot.config import Config
 from duckybot.jellyseerr import Jellyseerr, discord_ids_of, requestable_seasons
@@ -241,6 +245,38 @@ async def test_set_discord_id_keeps_other_settings(fake_seerr):
     seerr, state = fake_seerr
     await seerr.set_discord_id(2, "555")
     assert state["posted"][2]["discordIds"] == ["555"] and state["posted"][2]["discordId"] == "555"
+
+
+# --- slash-commando's -------------------------------------------------------------
+
+def test_slash_commands_are_english(tmp_path):
+    bot = FakeBot(make_config(tmp_path))
+    tree = discord.app_commands.CommandTree(discord.Client(intents=discord.Intents.none()))
+    commands = {}
+    # Invites is een GroupCog: de cog zelf is de groep /invite.
+    for command in [*Media(bot).get_app_commands(), Invites(bot).app_command, *Notifications(bot).get_app_commands()]:
+        payload = command.to_dict(tree)
+        options = payload.get("options", [])
+        if options and options[0]["type"] == 1:  # subcommando's, zoals /invite discord
+            for sub in options:
+                commands[f"{payload['name']} {sub['name']}"] = [o["name"] for o in sub.get("options", [])]
+        else:
+            commands[payload["name"]] = [o["name"] for o in options]
+    assert commands == {
+        "request": ["title"],
+        "my-requests": [],
+        "my-account": [],
+        "link": ["member", "user"],
+        "unlink": ["member"],
+        "invite discord": ["max_uses", "expires"],
+        "invite jellyfin": ["member", "username"],
+        "announce": ["channel", "ping"],
+    }
+
+
+def test_presence_text():
+    assert presence_text(1) == "1 lid online"
+    assert presence_text(12) == "12 leden online"
 
 
 # --- opslag ----------------------------------------------------------------------

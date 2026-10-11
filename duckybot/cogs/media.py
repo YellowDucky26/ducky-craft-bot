@@ -32,7 +32,7 @@ def not_linked_message(bot: DuckyBot) -> str:
         "Je Discord-account is nog niet gekoppeld aan een Jellyseerr-account.\n"
         f"Log in op {url}, ga naar **Profiel → Instellingen → Notificaties → Discord** en vul je "
         "Discord-gebruikers-ID in (rechtsklik op jezelf → *Gebruikers-ID kopiëren*). "
-        "Of vraag een admin om `/koppel`."
+        "Of vraag een admin om `/link`."
     )
 
 
@@ -168,10 +168,11 @@ class Media(commands.Cog):
         else:
             await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
-    # --- /aanvraag -------------------------------------------------------
+    # --- /request --------------------------------------------------------
 
-    @app_commands.command(name="aanvraag", description="Vraag een film of serie aan via Jellyseerr")
-    @app_commands.describe(titel="Begin te typen en kies een titel uit de lijst")
+    @app_commands.command(name="request", description="Request a movie or series through Jellyseerr")
+    @app_commands.rename(titel="title")
+    @app_commands.describe(titel="Start typing and pick a title from the list")
     async def aanvraag(self, interaction: discord.Interaction, titel: str) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)
         if match := CHOICE_RE.match(titel):
@@ -210,9 +211,9 @@ class Media(commands.Cog):
             choices.append(app_commands.Choice(name=name[:100], value=f"{r['mediaType']}:{r['id']}"))
         return choices
 
-    # --- /mijn-aanvragen -------------------------------------------------
+    # --- /my-requests ----------------------------------------------------
 
-    @app_commands.command(name="mijn-aanvragen", description="Bekijk je laatste aanvragen")
+    @app_commands.command(name="my-requests", description="Show your latest requests")
     async def mijn_aanvragen(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)
         user = await self.bot.resolve_seerr_user(interaction.user)
@@ -225,7 +226,7 @@ class Media(commands.Cog):
             await interaction.followup.send(f"❌ Ophalen mislukt: {exc.message}", ephemeral=True)
             return
         if not requests:
-            await interaction.followup.send("Je hebt nog niets aangevraagd. Probeer `/aanvraag`!", ephemeral=True)
+            await interaction.followup.send("Je hebt nog niets aangevraagd. Probeer `/request`!", ephemeral=True)
             return
 
         async def describe(req: dict[str, Any]) -> str:
@@ -249,7 +250,7 @@ class Media(commands.Cog):
 
     # --- koppelen --------------------------------------------------------
 
-    @app_commands.command(name="koppeling", description="Laat zien aan welk Jellyseerr-account je gekoppeld bent")
+    @app_commands.command(name="my-account", description="Show which Jellyseerr account you are linked to")
     async def koppeling(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)
         user = await self.bot.resolve_seerr_user(interaction.user)
@@ -258,8 +259,9 @@ class Media(commands.Cog):
         else:
             await interaction.followup.send(f"🔗 Gekoppeld aan Jellyseerr-account **{seerr_name(user)}**.", ephemeral=True)
 
-    @app_commands.command(name="koppel", description="(Admin) Koppel een Discord-lid aan een Jellyseerr-account")
-    @app_commands.describe(lid="Het Discord-lid", gebruiker="Het Jellyseerr-account")
+    @app_commands.command(name="link", description="(Admin) Link a Discord member to a Jellyseerr account")
+    @app_commands.rename(lid="member", gebruiker="user")
+    @app_commands.describe(lid="The Discord member", gebruiker="The Jellyseerr account")
     @app_commands.default_permissions(manage_guild=True)
     async def koppel(self, interaction: discord.Interaction, lid: discord.Member, gebruiker: str) -> None:
         if not self.bot.is_admin(interaction.user):
@@ -289,7 +291,9 @@ class Media(commands.Cog):
             return []
         return [app_commands.Choice(name=seerr_name(u)[:100], value=str(u["id"])) for u in users[:25]]
 
-    @app_commands.command(name="ontkoppel", description="(Admin) Verwijder de koppeling van een Discord-lid")
+    @app_commands.command(name="unlink", description="(Admin) Remove the link of a Discord member")
+    @app_commands.rename(lid="member")
+    @app_commands.describe(lid="The Discord member")
     @app_commands.default_permissions(manage_guild=True)
     async def ontkoppel(self, interaction: discord.Interaction, lid: discord.Member) -> None:
         if not self.bot.is_admin(interaction.user):

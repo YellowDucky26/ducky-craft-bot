@@ -42,7 +42,7 @@ class Config:
 
     request_channel_id: int = 0   # openbare meldingen (goedgekeurd, beschikbaar)
     admin_channel_id: int = 0     # nieuwe aanvragen met knoppen, fouten, issues
-    announce_channel_id: int = 0  # standaardkanaal voor /melding en /notify
+    announce_channel_id: int = 0  # standaardkanaal voor /announce en /notify
     invite_channel_id: int = 0    # kanaal waarvoor Discord-invites worden gemaakt
 
     web_port: int = 8688

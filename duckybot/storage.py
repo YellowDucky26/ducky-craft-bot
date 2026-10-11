@@ -20,7 +20,7 @@ class LinkStore:
         os.replace(tmp, self._path)
 
     def check_writable(self) -> None:
-        """Stop direct bij het starten als de datamap niet schrijfbaar is, niet pas bij /koppel."""
+        """Stop direct bij het starten als de datamap niet schrijfbaar is, niet pas bij /link."""
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)
             with tempfile.TemporaryFile(dir=self._path.parent, prefix=".schrijftest-"):

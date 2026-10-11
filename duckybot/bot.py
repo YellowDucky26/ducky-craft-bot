@@ -4,7 +4,7 @@ from typing import Any
 
 import aiohttp
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from . import __version__
 from .config import Config
@@ -34,6 +34,10 @@ def seerr_name(user: dict[str, Any]) -> str:
     )
 
 
+def presence_text(online: int) -> str:
+    return "1 lid online" if online == 1 else f"{online} leden online"
+
+
 class DuckyBot(commands.Bot):
     def __init__(self, config: Config):
         super().__init__(command_prefix=commands.when_mentioned, intents=discord.Intents.default())
@@ -43,6 +47,7 @@ class DuckyBot(commands.Bot):
         self.seerr: Jellyseerr
         self.jellyfin: Jellyfin | None = None
         self._web_runner = None
+        self._presence_text: str | None = None
 
     @property
     def guild_object(self) -> discord.Object:
@@ -68,6 +73,7 @@ class DuckyBot(commands.Bot):
         self._web_runner = await start_web_server(self)
 
     async def close(self) -> None:
+        self.update_presence.cancel()
         if self._web_runner:
             await self._web_runner.cleanup()
         if self.http_session:
@@ -76,7 +82,22 @@ class DuckyBot(commands.Bot):
 
     async def on_ready(self) -> None:
         log.info("Ingelogd als %s (%s), versie %s", self.user, self.user.id if self.user else "?", __version__)
-        await self.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="/aanvraag"))
+        if not self.update_presence.is_running():
+            self.update_presence.start()
+
+    @tasks.loop(minutes=5)
+    async def update_presence(self) -> None:
+        """Status 'Kijkt naar X leden online'. Het aantal komt van Discord zelf, zonder presence-intent."""
+        try:
+            guild = await self.fetch_guild(self.config.guild_id, with_counts=True)
+        except discord.HTTPException as exc:
+            log.warning("Aantal online leden ophalen mislukt: %s", exc)
+            return
+        online = guild.approximate_presence_count or 0
+        name = presence_text(online)
+        if name != self._presence_text:
+            await self.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=name))
+            self._presence_text = name
 
     async def on_app_command_error(
         self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError
