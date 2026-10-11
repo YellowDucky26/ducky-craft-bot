@@ -164,8 +164,18 @@ class Notifications(commands.Cog):
             for name in (notice.requester, notice.reporter):
                 if name:
                     recipients.update(self.bot.links.discord_ids_for(name=name))
+            # Wie zelf reageert, hoeft daar geen DM over te krijgen.
+            recipients -= set(notice.commenter_discord_ids)
+            if notice.commenter:
+                recipients -= set(self.bot.links.discord_ids_for(name=notice.commenter))
+            dm_view = watch_view
+            if notice.issue_id:
+                dm_view = discord.ui.View()
+                dm_view.add_item(discord.ui.Button(
+                    label="Bekijk melding", url=f"{cfg.jellyseerr_public_url}/issues/{notice.issue_id}"
+                ))
             for user_id in recipients:
-                await self.bot.dm(user_id, content=notice.dm_text, embed=embed, view=watch_view)
+                await self.bot.dm(user_id, content=notice.dm_text, embed=embed, view=dm_view)
 
         log.info("Jellyseerr-melding %s verwerkt (%s)", notice.notification_type, notice.title)
         return notice

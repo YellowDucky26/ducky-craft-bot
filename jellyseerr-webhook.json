@@ -25,7 +25,9 @@
   },
   "{{comment}}": {
     "comment_message": "{{comment_message}}",
-    "commentedBy_username": "{{commentedBy_username}}"
+    "commentedBy_username": "{{commentedBy_username}}",
+    "commentedBy_settings_discordIds": "{{commentedBy_settings_discordIds}}",
+    "commentedBy_settings_discordId": "{{commentedBy_settings_discordId}}"
   },
   "{{extra}}": []
 }

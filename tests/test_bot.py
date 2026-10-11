@@ -678,3 +678,57 @@ async def test_invite_jellyfin_is_admin_only(tmp_path):
     cog = Invites(bot)
     await cog.jellyfin_invite.callback(cog, interaction, SimpleNamespace(id=2, bot=False), None)
     assert sent == ["Alleen admins kunnen Jellyfin-accounts aanmaken."]
+
+
+def issue_values(ntype, **extra):
+    return {
+        **SEERR_VALUES,
+        "notification_type": ntype,
+        "requestedBy_username": "",
+        "requestedBy_settings_discordIds": "",
+        "issue_id": "12",
+        "issue_type": "Subtitle",
+        "reportedBy_username": "Eend",
+        "reportedBy_settings_discordIds": "666666666666666666",
+        **extra,
+    }
+
+
+def render_issue(values, *, has_comment=False):
+    payload = render_like_seerr(TEMPLATE, values, has_request=False, has_issue=True)
+    if has_comment:  # render_like_seerr laat {{comment}} standaard weg
+        payload["comment"] = render_like_seerr(TEMPLATE["{{comment}}"], values)
+    return payload
+
+
+async def test_issue_comment_dms_reporter_but_not_the_commenter(tmp_path):
+    bot = FakeBot(make_config(tmp_path))
+    cog = Notifications(bot)
+
+    by_admin = issue_values("ISSUE_COMMENT", comment_message="Opgelost?\nGraag even testen.",
+                            commentedBy_username="Admin", commentedBy_settings_discordIds="777777777777777777")
+    notice = await cog.handle_seerr_webhook(render_issue(by_admin, has_comment=True))
+    assert notice.issue_id == 12 and notice.commenter == "Admin"
+    assert [u for u, _ in bot.dms] == [666666666666666666]
+    dm = bot.dms[0][1]
+    assert dm["content"] == "💬 **Admin** reageerde op je melding over **Dune (2021)**:\n> Opgelost?\n> Graag even testen."
+    assert dm["view"].children[0].url == "https://seerr.example/issues/12"
+
+    bot.dms.clear()
+    by_reporter = issue_values("ISSUE_COMMENT", comment_message="Nee, nog niet.",
+                               commentedBy_username="Eend", commentedBy_settings_discordIds="666666666666666666")
+    await cog.handle_seerr_webhook(render_issue(by_reporter, has_comment=True))
+    assert bot.dms == []
+
+
+async def test_issue_reopened_dms_reporter(tmp_path):
+    bot = FakeBot(make_config(tmp_path))
+    await Notifications(bot).handle_seerr_webhook(render_issue(issue_values("ISSUE_REOPENED")))
+    assert [u for u, _ in bot.dms] == [666666666666666666] and "heropend" in bot.dms[0][1]["content"]
+
+
+async def test_rejected_webhook_is_logged(tmp_path, aiohttp_client, caplog):
+    client = await aiohttp_client(create_app(FakeBot(make_config(tmp_path))))
+    resp = await client.post("/webhook/jellyseerr", json={}, headers={"Authorization": "fout"})
+    assert resp.status == 401
+    assert "Geweigerd: POST /webhook/jellyseerr" in caplog.text

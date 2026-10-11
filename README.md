@@ -198,13 +198,19 @@ Welk bericht gaat waarheen:
 | Goedgekeurd | | ✅ | ✅ |
 | Nu beschikbaar | | ✅ | ✅ |
 | Afgewezen | ✅ | | ✅ |
-| Probleem opgelost | ✅ | | ✅ (aan de melder) |
-| Mislukt, overige probleemmeldingen, test | ✅ | | |
+| Reactie op probleem | ✅ | | ✅ aan de melder (niet als die zelf reageert) |
+| Probleem opgelost of heropend | ✅ | | ✅ aan de melder |
+| Mislukt, nieuw probleem, test | ✅ | | |
 
 `ADMIN_CHANNEL_ID` leeg? Dan gaan adminberichten naar `REQUEST_CHANNEL_ID`.
 
-Zet ook de meldingstypes voor problemen aan als je wilt dat melders een DM
-krijgen wanneer hun probleem is opgelost.
+Zet ook de meldingstypes voor problemen aan (*Probleem gemeld*, *Reactie*,
+*Opgelost* en *Heropend*) als je wilt dat melders een DM krijgen bij updates.
+
+Komt er niets binnen? Kijk in de log van de bot: een webhook met een verkeerde
+Authorization-header staat daar als `Geweigerd: POST /webhook/jellyseerr ...`.
+Staat er helemaal niets, dan heeft Jellyseerr de bot niet bereikt (verkeerde
+URL, of de webhook-agent of het meldingstype staat uit).
 
 ### Geplande berichten
 

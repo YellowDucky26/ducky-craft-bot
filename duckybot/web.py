@@ -25,6 +25,9 @@ def create_app(bot: "DuckyBot") -> web.Application:
 
     async def read_json(request: web.Request) -> dict:
         if not authorized(request, secret):
+            # Zonder deze regel valt een verkeerd ingestelde webhook nergens op.
+            log.warning("Geweigerd: %s %s van %s (Authorization-header klopt niet met WEBHOOK_SECRET)",
+                        request.method, request.path, request.remote)
             raise web.HTTPUnauthorized(text="ongeldige Authorization-header")
         try:
             payload = await request.json()
