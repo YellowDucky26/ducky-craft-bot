@@ -156,6 +156,12 @@ class Jellyseerr:
         settings["discordId"] = discord_id
         await self._call("POST", f"/user/{user_id}/settings/notifications", json=settings)
 
+    async def set_email(self, user_id: int, email: str) -> None:
+        """Zet het e-mailadres in het Jellyseerr-profiel; de overige hoofdinstellingen blijven staan."""
+        settings = await self._call("GET", f"/user/{user_id}/settings/main")
+        settings["email"] = email
+        await self._call("POST", f"/user/{user_id}/settings/main", json=settings)
+
     async def find_user_by_discord_id(self, discord_id: str) -> dict[str, Any] | None:
         """Zoek de Jellyseerr-gebruiker die dit Discord-ID in zijn profiel heeft staan."""
         users = await self.all_users()

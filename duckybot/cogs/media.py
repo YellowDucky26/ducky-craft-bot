@@ -147,9 +147,65 @@ class ResultSelect(discord.ui.Select):
         await cog.show_media(interaction, media_type, int(tmdb_id), edit=True)
 
 
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class EmailModal(discord.ui.Modal, title="E-mailadres voor Jellyseerr"):
+    email = discord.ui.TextInput(label="E-mailadres", placeholder="naam@voorbeeld.nl", max_length=254)
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        bot: DuckyBot = interaction.client  # type: ignore[assignment]
+        email = self.email.value.strip()
+        if not EMAIL_RE.match(email):
+            await interaction.response.send_message(f"**{email}** is geen geldig e-mailadres.", ephemeral=True)
+            return
+        link = bot.links.get(interaction.user.id)
+        if link is None:
+            await interaction.response.send_message(not_linked_message(bot), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        try:
+            await bot.seerr.set_email(link["seerr_id"], email)
+        except JellyseerrError as exc:
+            # Jellyseerr geeft 400 (InvalidEmail) als een ander account dit adres al heeft.
+            reason = "dit e-mailadres hoort al bij een ander account." if exc.status == 400 else exc.message
+            await interaction.followup.send(f"❌ Opslaan mislukt: {reason}", ephemeral=True)
+            return
+        await interaction.followup.send(f"📧 E-mailadres **{email}** opgeslagen in Jellyseerr.", ephemeral=True)
+
+
+class EmailButton(discord.ui.DynamicItem[discord.ui.Button], template=r"seerr:email"):
+    """Opent het e-mailvenster; blijft werken na een herstart. Geldt altijd voor wie klikt."""
+
+    def __init__(self):
+        super().__init__(
+            discord.ui.Button(label="E-mailadres invullen", emoji="📧", style=discord.ButtonStyle.primary, custom_id="seerr:email")
+        )
+
+    @classmethod
+    async def from_custom_id(cls, interaction: discord.Interaction, item: discord.ui.Button, match: re.Match[str]):
+        return cls()
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        bot: DuckyBot = interaction.client  # type: ignore[assignment]
+        if bot.links.get(interaction.user.id) is None:
+            await interaction.response.send_message(not_linked_message(bot), ephemeral=True)
+            return
+        await interaction.response.send_modal(EmailModal())
+
+
+def email_view() -> discord.ui.View:
+    view = discord.ui.View(timeout=None)
+    view.add_item(EmailButton())
+    return view
+
+
 class Media(commands.Cog):
     def __init__(self, bot: DuckyBot):
         self.bot = bot
+
+    async def cog_load(self) -> None:
+        self.bot.add_dynamic_items(EmailButton)
 
     async def show_media(
         self, interaction: discord.Interaction, media_type: str, tmdb_id: int, *, edit: bool = False
@@ -257,7 +313,9 @@ class Media(commands.Cog):
         if user is None:
             await interaction.followup.send(not_linked_message(self.bot), ephemeral=True)
         else:
-            await interaction.followup.send(f"🔗 Gekoppeld aan Jellyseerr-account **{seerr_name(user)}**.", ephemeral=True)
+            await interaction.followup.send(
+                f"🔗 Gekoppeld aan Jellyseerr-account **{seerr_name(user)}**.", view=email_view(), ephemeral=True
+            )
 
     @app_commands.command(name="link", description="(Admin) Link a Discord member to a Jellyseerr account")
     @app_commands.rename(lid="member", gebruiker="user")
@@ -278,10 +336,24 @@ class Media(commands.Cog):
             await interaction.followup.send(f"❌ Koppelen mislukt: {exc.message}", ephemeral=True)
             return
         self.bot.links.set(lid.id, user["id"], seerr_name(user))
-        await interaction.followup.send(
-            f"🔗 {lid.mention} is gekoppeld aan **{seerr_name(user)}**.", ephemeral=True,
-            allowed_mentions=discord.AllowedMentions.none(),
+        delivered = await self.bot.dm(
+            lid.id,
+            embed=discord.Embed(
+                title="🔗 Je bent gekoppeld aan Jellyseerr",
+                description=(
+                    f"Je Discord-account is gekoppeld aan het Jellyseerr-account **{seerr_name(user)}**.\n"
+                    "Vul je e-mailadres in, dan staat het in je Jellyseerr-profiel."
+                ),
+                color=COLOR_BRAND,
+            ),
+            view=email_view(),
         )
+        text = f"🔗 {lid.mention} is gekoppeld aan **{seerr_name(user)}**."
+        if delivered:
+            text += "\nHet lid heeft een DM gekregen om het e-mailadres in te vullen."
+        else:
+            text += f"\n⚠️ {lid.mention} accepteert geen DM's; het e-mailadres kan ook via `/my-account`."
+        await interaction.followup.send(text, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
 
     @koppel.autocomplete("gebruiker")
     async def koppel_autocomplete(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:

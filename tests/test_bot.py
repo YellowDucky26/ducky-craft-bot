@@ -10,7 +10,7 @@ from aiohttp import web
 
 from duckybot.bot import presence_text
 from duckybot.cogs.invites import Invites
-from duckybot.cogs.media import Media
+from duckybot.cogs.media import EMAIL_RE, Media
 from duckybot.cogs.notifications import Notifications, parse_color
 from duckybot.config import Config
 from duckybot.jellyseerr import Jellyseerr, discord_ids_of, requestable_seasons
@@ -161,7 +161,7 @@ async def fake_seerr(aiohttp_server):
         1: {"discordIds": [], "discordId": None},
         2: {"discordIds": ["999"]},
         3: {"discordId": "777"},  # oude Jellyseerr
-    }, "posted": {}}
+    }, "posted": {}, "main": {2: {"username": "kwak", "email": "kwak@jellyfin", "locale": "nl"}}}
 
     def check_key(request):
         if request.headers.get("X-Api-Key") != "k":
@@ -189,6 +189,13 @@ async def fake_seerr(aiohttp_server):
             return web.json_response(state["posted"][uid])
         return web.json_response(state["settings"][uid])
 
+    async def main_settings(request):
+        check_key(request)
+        uid = int(request.match_info["id"])
+        if request.method == "POST":
+            state["main"][uid] = await request.json()
+        return web.json_response(state["main"][uid])
+
     async def create_request(request):
         check_key(request)
         body = await request.json()
@@ -205,6 +212,7 @@ async def fake_seerr(aiohttp_server):
     app.router.add_get("/api/v1/search", search)
     app.router.add_get("/api/v1/user", users)
     app.router.add_route("*", "/api/v1/user/{id}/settings/notifications", settings)
+    app.router.add_route("*", "/api/v1/user/{id}/settings/main", main_settings)
     app.router.add_post("/api/v1/request", create_request)
     app.router.add_post("/api/v1/user/import-from-jellyfin", import_jf)
     server = await aiohttp_server(app)
@@ -245,6 +253,18 @@ async def test_set_discord_id_keeps_other_settings(fake_seerr):
     seerr, state = fake_seerr
     await seerr.set_discord_id(2, "555")
     assert state["posted"][2]["discordIds"] == ["555"] and state["posted"][2]["discordId"] == "555"
+
+
+async def test_set_email_keeps_other_settings(fake_seerr):
+    seerr, state = fake_seerr
+    await seerr.set_email(2, "kwak@example.nl")
+    assert state["main"][2] == {"username": "kwak", "email": "kwak@example.nl", "locale": "nl"}
+
+
+def test_email_validation():
+    assert EMAIL_RE.match("kwak@example.nl")
+    for bad in ("kwak", "kwak@", "kwak@example", "kw ak@example.nl", "a@b@c.nl"):
+        assert not EMAIL_RE.match(bad), bad
 
 
 # --- slash-commando's -------------------------------------------------------------

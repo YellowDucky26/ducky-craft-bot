@@ -34,10 +34,10 @@ Zusterproject van
 |---|---|---|
 | `/request title:` | iedereen | Film of serie zoeken en aanvragen. Bij series worden alle ontbrekende seizoenen aangevraagd. |
 | `/my-requests` | iedereen | Je laatste 10 aanvragen met status. |
-| `/my-account` | iedereen | Aan welk Jellyseerr-account ben je gekoppeld? |
+| `/my-account` | iedereen | Aan welk Jellyseerr-account ben je gekoppeld? Met een knop om je e-mailadres in te vullen of te wijzigen. |
 | `/invite discord [max_uses] [expires]` | invite-rol / admin | Invitelink, standaard 1× te gebruiken en 1 dag geldig. |
 | `/invite jellyfin member: [username]` | invite-rol / admin | Jellyfin-account voor een lid. |
-| `/link member: user:` | admin | Discord-lid handmatig aan een Jellyseerr-account koppelen. |
+| `/link member: user:` | admin | Discord-lid handmatig aan een Jellyseerr-account koppelen. Het lid krijgt een DM om zelf een e-mailadres in te vullen. |
 | `/unlink member:` | admin | Koppeling verwijderen. |
 | `/announce [channel] [ping]` | admin | Aankondiging versturen; titel en tekst vul je in een venster in. |
 
