@@ -10,6 +10,7 @@ from discord.ext import commands
 from ..bot import COLOR_BRAND, COLOR_INFO, DuckyBot, seerr_name
 from ..jellyfin import JellyfinError
 from ..jellyseerr import JellyseerrError
+from .media import email_view
 
 log = logging.getLogger(__name__)
 
@@ -119,11 +120,13 @@ class Invites(commands.GroupCog, group_name="invite", group_description="Invite 
             return
 
         warnings: list[str] = []
+        linked = False
         try:
             seerr_user = await self.bot.seerr.import_jellyfin_user(jf_user["Id"])
             if seerr_user:
                 await self.bot.seerr.set_discord_id(seerr_user["id"], str(lid.id))
                 self.bot.links.set(lid.id, seerr_user["id"], seerr_name(seerr_user))
+                linked = True
             else:
                 warnings.append("Het account kon niet in Jellyseerr worden gevonden na importeren.")
         except JellyseerrError as exc:
@@ -155,7 +158,13 @@ class Invites(commands.GroupCog, group_name="invite", group_description="Invite 
             value=f"Gebruik `/request` in de server, of log met je Jellyfin-account in op {cfg.jellyseerr_public_url}",
             inline=False,
         )
-        delivered = await self.bot.dm(lid.id, embed=welcome)
+        if linked:
+            welcome.add_field(
+                name="E-mailadres",
+                value="Vul je e-mailadres in met de knop hieronder, dan staat het in je Jellyseerr-profiel.",
+                inline=False,
+            )
+        delivered = await self.bot.dm(lid.id, embed=welcome, view=email_view() if linked else discord.utils.MISSING)
 
         lines = [f"✅ Jellyfin-account **{name}** aangemaakt voor {lid.mention}."]
         if delivered:
