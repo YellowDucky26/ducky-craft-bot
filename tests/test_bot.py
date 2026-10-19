@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta, timezone
 import os
 from pathlib import Path
 from types import SimpleNamespace
@@ -9,7 +10,7 @@ import pytest
 from aiohttp import web
 
 from duckybot.bot import presence_text
-from duckybot.cogs.accounts import Accounts, find_inactive, top
+from duckybot.cogs.accounts import Accounts, find_inactive, leave_embed, membership_length, top
 from duckybot.cogs.invites import Invites
 from duckybot.cogs.library import Library, describe_session, digest_due, group_new_items
 from duckybot.cogs.media import EMAIL_RE, Media
@@ -17,7 +18,7 @@ from duckybot.cogs.notifications import Notifications, parse_color
 from duckybot.config import Config
 from duckybot.jellyseerr import Jellyseerr, discord_ids_of, requestable_seasons
 from duckybot.notify import parse_seerr_payload
-from duckybot.storage import LinkStore
+from duckybot.storage import LinkStore, StateStore
 from duckybot.web import create_app
 
 TEMPLATE = json.loads((Path(__file__).parent.parent / "jellyseerr-webhook.json").read_text())
@@ -746,3 +747,55 @@ async def test_bot_itself_never_gets_dm(tmp_path):
     await Notifications(bot).handle_seerr_webhook(render_issue(values))
     assert [u for u, _ in bot.dms] == [770736906187046934]
 
+
+
+def test_membership_length():
+    now = datetime(2026, 10, 19, tzinfo=timezone.utc)
+    assert membership_length(now - timedelta(hours=5), now) == "minder dan een dag"
+    assert membership_length(now - timedelta(days=1), now) == "1 dag"
+    assert membership_length(now - timedelta(days=12), now) == "12 dagen"
+    assert membership_length(now - timedelta(days=62), now) == "2 maanden"
+    assert membership_length(now - timedelta(days=365), now) == "1 jaar"
+    assert membership_length(now - timedelta(days=800), now) == "2 jaar en 2 maanden"
+
+
+def fake_member(**extra):
+    everyone = SimpleNamespace(mention="@everyone", is_default=lambda: True)
+    vip = SimpleNamespace(mention="<@&5>", is_default=lambda: False)
+    return SimpleNamespace(
+        id=42, name="kwak", display_name="Kwak", mention="<@42>", bot=False,
+        display_avatar=SimpleNamespace(url="https://cdn.example/a.png"),
+        joined_at=datetime(2025, 1, 1, tzinfo=timezone.utc), roles=[everyone, vip],
+        guild=SimpleNamespace(member_count=17), **extra,
+    )
+
+
+def test_leave_embed():
+    now = datetime(2026, 10, 19, tzinfo=timezone.utc)
+    embed = leave_embed(fake_member(), now, None, None)
+    assert embed.title == "👋 Kwak heeft de server verlaten"
+    fields = {f.name: f.value for f in embed.fields}
+    assert fields["Rollen"] == "<@&5>" and "1 jaar en 9 maanden" in fields["Lid sinds"]
+    assert "Door" not in fields and "Jellyseerr-account" not in fields
+    assert embed.footer.text == "Nog 17 leden · ID 42"
+
+    embed = leave_embed(fake_member(), now, ("ban", "<@1>: spam"), {"name": "Kwak"})
+    fields = {f.name: f.value for f in embed.fields}
+    assert embed.title == "🔨 Kwak is verbannen"
+    assert fields["Door"] == "<@1>: spam" and fields["Jellyseerr-account"] == "Kwak"
+
+
+async def test_member_remove_reports_once(tmp_path):
+    bot = FakeBot(make_config(tmp_path, leave_channel_id=50))
+    bot.state = StateStore(str(tmp_path))
+    bot.jellyfin = None
+    bot.links.set(42, 7, "Kwak")
+    member = fake_member()
+    member.guild = SimpleNamespace(id=1, member_count=17, me=None)
+    await Accounts(bot).on_member_remove(member)
+    assert [c for c, _ in bot.sent] == [50]
+    assert bot.state.get("departed") == [42]  # check_departures meldt het niet nog eens
+
+    member.guild.id = 2  # andere server
+    await Accounts(bot).on_member_remove(member)
+    assert len(bot.sent) == 1

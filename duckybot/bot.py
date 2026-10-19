@@ -49,7 +49,10 @@ def presence_text(online: int) -> str:
 
 class DuckyBot(commands.Bot):
     def __init__(self, config: Config):
-        super().__init__(command_prefix=commands.when_mentioned, intents=discord.Intents.default())
+        # Server Members Intent (privileged, aan te zetten in het Developer Portal): voor on_member_remove.
+        intents = discord.Intents.default()
+        intents.members = True
+        super().__init__(command_prefix=commands.when_mentioned, intents=intents)
         self.config = config
         self.links = LinkStore(config.data_dir)
         self.state = StateStore(config.data_dir)

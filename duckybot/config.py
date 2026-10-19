@@ -53,6 +53,7 @@ class Config:
     admin_channel_id: int = 0     # nieuwe aanvragen met knoppen, fouten, issues
     announce_channel_id: int = 0  # standaardkanaal voor /announce en /notify
     invite_channel_id: int = 0    # kanaal waarvoor Discord-invites worden gemaakt
+    leave_channel_id: int = 0     # leden die de server verlaten; standaard het adminkanaal
 
     # Geplande berichten: overzicht van nieuwe titels en het maandoverzicht van inactieve accounts.
     timezone: str = "Europe/Amsterdam"
@@ -97,6 +98,7 @@ class Config:
             admin_channel_id=_int("ADMIN_CHANNEL_ID"),
             announce_channel_id=_int("ANNOUNCE_CHANNEL_ID"),
             invite_channel_id=_int("INVITE_CHANNEL_ID"),
+            leave_channel_id=_int("LEAVE_CHANNEL_ID"),
             timezone=_str("TZ", "Europe/Amsterdam"),
             report_time=_str("REPORT_TIME", "18:00"),
             digest=_str("DIGEST", "weekly").lower(),
