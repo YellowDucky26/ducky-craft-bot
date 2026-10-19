@@ -30,6 +30,8 @@ Hij koppelt Discord aan Jellyseerr en Jellyfin:
     *Nu beschikbaar* komen in het aanvraagkanaal en gaan ook per DM naar de
     aanvrager, met een knop *Kijk in Jellyfin*.
   - `/announce` voor aankondigingen, met een optionele rol- of @everyone-ping.
+  - `/embed` om een opgemaakt bericht (velden, kleuren, footer) uit een
+    JSON-bestand te plaatsen of later bij te werken, bv. de serverregels.
   - `POST /notify` zodat andere diensten (Minecraft-server, scripts, ...) via
     de bot een bericht kunnen sturen.
 - **Status**: de bot laat zien hoeveel leden er online zijn (*Kijkt naar 12
@@ -60,13 +62,46 @@ Zusterproject van
 | `/link member: user:` | admin | Discord-lid handmatig aan een Jellyseerr-account koppelen. Het lid krijgt een DM om zelf een e-mailadres in te vullen. |
 | `/unlink member:` | admin | Koppeling verwijderen. |
 | `/announce [channel] [ping]` | admin | Aankondiging versturen; titel en tekst vul je in een venster in. |
+| `/embed file: [channel] [ping] [edit]` | admin | Bericht met embeds uit een JSON-bestand plaatsen, of met `edit` (berichtlink) een eerder bericht van de bot bijwerken. |
 | `/stats` | admin | Bibliotheek, accounts, aanvragen deze maand, wie het meest aanvraagt en kijkt. |
 | `/inactive` | admin | Jellyfin-accounts die al `INACTIVE_DAYS` dagen niets hebben gekeken. |
 
 **Admin** is iedereen met het recht *Server beheren* of een rol uit
-`ADMIN_ROLE_IDS`. `/link`, `/unlink`, `/announce`, `/stats` en `/inactive` zijn standaard alleen
+`ADMIN_ROLE_IDS`. `/link`, `/unlink`, `/announce`, `/embed`, `/stats` en `/inactive` zijn standaard alleen
 zichtbaar voor *Server beheren*. Dat kun je per rol aanpassen onder
 Serverinstellingen → Integraties → bot.
+
+### Opgemaakte berichten met `/embed`
+
+Voor vaste berichten zoals de serverregels of een welkomstbericht. Maak het
+bericht in [Discohook](https://discohook.app) (of schrijf de JSON zelf) en
+upload het bestand bij `/embed file:`. Het formaat is dat van een
+Discord-webhook:
+
+```json
+{
+  "content": null,
+  "embeds": [
+    {
+      "title": "Serverregels",
+      "description": "Deze regels gelden in Minecraft en op Discord.",
+      "color": "#27ae60",
+      "fields": [{ "name": "Algemeen", "value": "**1. Respect voor iedereen**" }],
+      "footer": { "text": "Veel plezier!" }
+    }
+  ]
+}
+```
+
+Een Discohook-export, één los embed-object of een lijst embeds werkt ook.
+De bot controleert het bestand vóór het versturen: geldige JSON, de limieten
+van Discord (10 embeds, 25 velden van 1024 tekens, 6000 tekens per bericht)
+en kanaalvermeldingen zonder ID zoals `<#REGELS-ID>`. Vermeldingen in het
+bestand pingen nooit; daarvoor is de optie `ping`.
+
+Regels aangepast? Gebruik `edit:` met de link naar het bericht (rechtsklik →
+*Link naar bericht kopiëren*), dan werkt de bot dat bericht bij in plaats van
+een nieuw te plaatsen. Dat kan alleen bij berichten van de bot zelf.
 
 ### Berichten aan de bot doorsturen
 

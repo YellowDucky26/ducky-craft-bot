@@ -21,6 +21,7 @@ EXTENSIONS = (
     "duckybot.cogs.library",
     "duckybot.cogs.accounts",
     "duckybot.cogs.inbox",
+    "duckybot.cogs.embeds",
 )
 
 BOT_NAME = "Kwakkel"
