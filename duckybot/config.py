@@ -53,6 +53,7 @@ class Config:
     admin_channel_id: int = 0     # nieuwe aanvragen met knoppen, fouten, issues
     announce_channel_id: int = 0  # standaardkanaal voor /announce en /notify
     invite_channel_id: int = 0    # kanaal waarvoor Discord-invites worden gemaakt
+    leave_channel_id: int = 0     # leden die de server verlaten; standaard het adminkanaal
 
     # Geplande berichten: overzicht van nieuwe titels en het maandoverzicht van inactieve accounts.
     timezone: str = "Europe/Amsterdam"
@@ -61,6 +62,9 @@ class Config:
     digest_day: int = 4            # bij weekly: 0 = maandag ... 4 = vrijdag
     digest_channel_id: int = 0     # standaard het aankondigingskanaal
     inactive_days: int = 60        # 0 = geen maandoverzicht
+
+    # DM's aan de bot en pings van de bot worden als DM naar deze gebruiker doorgestuurd; 0 = uit.
+    forward_user_id: int = 0
 
     web_port: int = 8688
     webhook_secret: str = ""
@@ -94,12 +98,14 @@ class Config:
             admin_channel_id=_int("ADMIN_CHANNEL_ID"),
             announce_channel_id=_int("ANNOUNCE_CHANNEL_ID"),
             invite_channel_id=_int("INVITE_CHANNEL_ID"),
+            leave_channel_id=_int("LEAVE_CHANNEL_ID"),
             timezone=_str("TZ", "Europe/Amsterdam"),
             report_time=_str("REPORT_TIME", "18:00"),
             digest=_str("DIGEST", "weekly").lower(),
             digest_day=WEEKDAYS.get(_str("DIGEST_DAY", "vrijdag").lower(), -1),
             digest_channel_id=_int("DIGEST_CHANNEL_ID"),
             inactive_days=_int("INACTIVE_DAYS", 60),
+            forward_user_id=_int("FORWARD_USER_ID"),
             web_port=_int("WEB_PORT", 8688),
             webhook_secret=_str("WEBHOOK_SECRET"),
             data_dir=_str("DATA_DIR", "/data"),

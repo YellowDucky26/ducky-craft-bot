@@ -46,6 +46,51 @@ def top(counter: Counter, n: int = 5) -> str:
     return "\n".join(lines) or "-"
 
 
+def membership_length(joined: datetime, now: datetime) -> str:
+    days = (now - joined).days
+    if days < 1:
+        return "minder dan een dag"
+    if days < 31:
+        return "1 dag" if days == 1 else f"{days} dagen"
+    years, months = divmod(days * 12 // 365, 12)
+    parts = []
+    if years:
+        parts.append(f"{years} jaar")
+    if months:
+        parts.append("1 maand" if months == 1 else f"{months} maanden")
+    return " en ".join(parts)
+
+
+REMOVALS = {"kick": ("👢", "is uit de server gezet"), "ban": ("🔨", "is verbannen")}
+
+
+def leave_embed(
+    member: Any, now: datetime, removal: tuple[str, str] | None, link: dict[str, Any] | None
+) -> discord.Embed:
+    """Melding voor een lid dat de server verlaat; ``removal`` is (kick/ban, toelichting) uit het auditlog."""
+    emoji, verb = REMOVALS[removal[0]] if removal else ("👋", "heeft de server verlaten")
+    embed = discord.Embed(
+        title=f"{emoji} {member.display_name} {verb}",
+        description=f"{member.mention} ({member.name}){' · bot' if member.bot else ''}",
+        color=COLOR_ERROR if removal else COLOR_WARN,
+        timestamp=now,
+    )
+    embed.set_thumbnail(url=member.display_avatar.url)
+    if member.joined_at:
+        since = discord.utils.format_dt(member.joined_at, "D")
+        embed.add_field(name="Lid sinds", value=f"{since} ({membership_length(member.joined_at, now)})")
+    roles = [role.mention for role in reversed(member.roles) if not role.is_default()]
+    if roles:
+        embed.add_field(name="Rollen", value=" ".join(roles)[:1024], inline=False)
+    if removal:
+        embed.add_field(name="Door", value=removal[1], inline=False)
+    if link:
+        embed.add_field(name="Jellyseerr-account", value=link["name"])
+    if member.guild.member_count:
+        embed.set_footer(text=f"Nog {member.guild.member_count} leden · ID {member.id}")
+    return embed
+
+
 # --- vertrokken leden: knoppen in het adminkanaal ---------------------------
 
 class ConfirmDeleteView(discord.ui.View):
@@ -141,11 +186,48 @@ class Accounts(commands.Cog):
 
     # --- vertrokken leden -------------------------------------------------
 
+    @commands.Cog.listener()
+    async def on_member_remove(self, member: discord.Member) -> None:
+        """Elk vertrek direct melden; dankzij de Server Members Intent."""
+        cfg = self.bot.config
+        if member.guild.id != cfg.guild_id:
+            return
+        link = self.bot.links.get(member.id)
+        embed = leave_embed(member, discord.utils.utcnow(), await self.removal(member), link)
+        view = departure_view(member.id) if link and self.bot.jellyfin else None
+        await self.bot.send_to(
+            cfg.leave_channel_id or cfg.admin_channel_id, embed=embed, view=view,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+        if link:  # niet nog eens via check_departures
+            departed = set(self.bot.state.get("departed", []))
+            if member.id not in departed:
+                self.bot.state.set("departed", sorted(departed | {member.id}))
+
+    async def removal(self, member: discord.Member) -> tuple[str, str] | None:
+        """(kick/ban, door wie en waarom) uit het auditlog, als de bot dat mag lezen."""
+        me = member.guild.me
+        if me is None or not me.guild_permissions.view_audit_log:
+            return None
+        await asyncio.sleep(2)  # het auditlog loopt soms iets achter op het event
+        since = discord.utils.utcnow() - timedelta(seconds=30)
+        try:
+            async for entry in member.guild.audit_logs(limit=10):
+                if entry.created_at < since:
+                    break
+                action = {discord.AuditLogAction.kick: "kick", discord.AuditLogAction.ban: "ban"}.get(entry.action)
+                if action and entry.target and entry.target.id == member.id:
+                    who = entry.user.mention if entry.user else "onbekend"
+                    return action, f"{who}: {entry.reason}" if entry.reason else who
+        except discord.HTTPException as exc:
+            log.info("Auditlog lezen mislukt: %s", exc)
+        return None
+
     @tasks.loop(hours=1)
     async def check_departures(self) -> None:
         """Gekoppelde leden die niet meer in de server zitten melden, één keer per vertrek.
 
-        Via de API per gekoppeld lid, zodat de privileged Server Members Intent niet nodig is.
+        Vangnet voor vertrekken terwijl de bot offline was; on_member_remove meldt ze anders direct.
         """
         try:
             guild = self.bot.get_guild(self.bot.config.guild_id) or await self.bot.fetch_guild(self.bot.config.guild_id)

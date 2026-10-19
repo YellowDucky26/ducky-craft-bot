@@ -34,6 +34,9 @@ Hij koppelt Discord aan Jellyseerr en Jellyfin:
     de bot een bericht kunnen sturen.
 - **Status**: de bot laat zien hoeveel leden er online zijn (*Kijkt naar 12
   online leden*), elke 5 minuten bijgewerkt.
+- **Doorsturen**: stuurt iemand de bot een DM of pingt iemand de bot in een
+  kanaal, dan krijgt `FORWARD_USER_ID` dat bericht als DM, met bijlagen en
+  een knop naar het originele bericht.
 
 Zusterproject van
 [proxmox-discord-relay](https://github.com/YellowDucky26/proxmox-discord-relay) en
@@ -65,6 +68,26 @@ Zusterproject van
 zichtbaar voor *Server beheren*. Dat kun je per rol aanpassen onder
 Serverinstellingen → Integraties → bot.
 
+### Berichten aan de bot doorsturen
+
+Zet `FORWARD_USER_ID` op het gebruikers-ID van degene die berichten aan de
+bot moet ontvangen (rechtsklik op jezelf → *Gebruikers-ID kopiëren*). De bot
+stuurt die persoon dan een DM bij:
+
+- elke DM aan de bot;
+- elk bericht in de server waarin de bot gepingd wordt (`@Kwakkel`), ook als
+  antwoord met ping.
+
+Elke DM toont wie het stuurde (met ID), waar, de tekst en de bijlagen. Bijlagen
+tot samen 10 MB gaan als bestand mee, grotere als link. Berichten van bots en
+van de ontvanger zelf worden niet doorgestuurd. Antwoorden gaat niet via de
+bot: klik op de naam bovenaan om de afzender zelf een bericht te sturen.
+
+De privileged *Message Content Intent* is hiervoor niet nodig. Discord geeft
+een bot altijd de tekst van DM's en van berichten waarin de bot zelf genoemd
+wordt. Pingt iemand de **rol** van de bot in plaats van de bot, dan kan de
+tekst leeg blijven; dat staat dan als *(geen tekst zichtbaar)* in de DM.
+
 ### Hoe weet de bot wie wie is?
 
 Een aanvraag moet in Jellyseerr op de juiste naam komen. De bot zoekt de
@@ -86,10 +109,13 @@ naam van de admin aangevraagd.
 
 1. Ga naar <https://discord.com/developers/applications> → **New Application**.
 2. Kies **Bot** → **Reset Token** en kopieer het token (`DISCORD_TOKEN`).
-   Privileged intents zijn niet nodig.
+   Zet op dezelfde pagina onder *Privileged Gateway Intents* de
+   **Server Members Intent** aan. Zonder die intent start de bot niet.
 3. Kies **OAuth2 → URL Generator**: scopes `bot` en `applications.commands`,
    met deze rechten: *View Channels*, *Send Messages*, *Embed Links*,
    *Create Instant Invite*, en *Manage Roles* als je `MEMBER_ROLE_ID` gebruikt.
+   Geef ook *View Audit Log* als je bij een vertrek wilt zien of iemand
+   gekickt of verbannen is.
    Je kunt ook deze link gebruiken, met je eigen client-ID:
    `https://discord.com/oauth2/authorize?client_id=JOUW_ID&scope=bot+applications.commands&permissions=268454913`
 4. Zet in Discord de ontwikkelaarsmodus aan (Instellingen → Geavanceerd). Daarna
@@ -218,14 +244,17 @@ URL, of de webhook-agent of het meldingstype staat uit).
 |---|---|---|---|
 | Nieuw in Jellyfin (met posters) | elke `DIGEST_DAY` om `REPORT_TIME`, of dagelijks | `DIGEST_CHANNEL_ID`, anders `ANNOUNCE_CHANNEL_ID` | `DIGEST=weekly`, `daily` of `off` |
 | Inactieve Jellyfin-accounts | de 1e van de maand om `REPORT_TIME` | adminkanaal | `INACTIVE_DAYS` (0 = uit) |
-| Gekoppeld lid heeft de server verlaten | binnen een uur, één keer per vertrek | adminkanaal | altijd aan |
+| Lid heeft de server verlaten (of is gekickt/verbannen) | direct | `LEAVE_CHANNEL_ID`, anders adminkanaal | altijd aan |
 
 De tijden gelden in de tijdzone `TZ` (standaard `Europe/Amsterdam`). Posters
 in het overzicht komen van `JELLYFIN_PUBLIC_URL`; die moet dus vanaf internet
 bereikbaar zijn, anders blijven de plaatjes leeg.
 
-Vertrekken controleert de bot elk uur per gekoppeld lid via de Discord-API.
-Daardoor is de privileged *Server Members Intent* niet nodig.
+Bij een vertrek toont de bot hoe lang iemand lid was en welke rollen die had.
+Had het lid een Jellyseerr-koppeling, dan staan er knoppen onder om het
+Jellyfin-account uit te schakelen of te verwijderen. Gekoppelde leden die
+vertrekken terwijl de bot offline is, meldt hij binnen een uur na de start.
+Met *View Audit Log* ziet de bot ook wie iemand heeft gekickt of verbannen.
 
 ### 5. Meldingen van andere diensten (`/notify`)
 
