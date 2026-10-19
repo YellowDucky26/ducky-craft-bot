@@ -62,6 +62,9 @@ class Config:
     digest_channel_id: int = 0     # standaard het aankondigingskanaal
     inactive_days: int = 60        # 0 = geen maandoverzicht
 
+    # DM's aan de bot en pings van de bot worden als DM naar deze gebruiker doorgestuurd; 0 = uit.
+    forward_user_id: int = 0
+
     web_port: int = 8688
     webhook_secret: str = ""
     data_dir: str = "/data"
@@ -100,6 +103,7 @@ class Config:
             digest_day=WEEKDAYS.get(_str("DIGEST_DAY", "vrijdag").lower(), -1),
             digest_channel_id=_int("DIGEST_CHANNEL_ID"),
             inactive_days=_int("INACTIVE_DAYS", 60),
+            forward_user_id=_int("FORWARD_USER_ID"),
             web_port=_int("WEB_PORT", 8688),
             webhook_secret=_str("WEBHOOK_SECRET"),
             data_dir=_str("DATA_DIR", "/data"),

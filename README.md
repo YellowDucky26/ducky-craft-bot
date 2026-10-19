@@ -34,6 +34,9 @@ Hij koppelt Discord aan Jellyseerr en Jellyfin:
     de bot een bericht kunnen sturen.
 - **Status**: de bot laat zien hoeveel leden er online zijn (*Kijkt naar 12
   online leden*), elke 5 minuten bijgewerkt.
+- **Doorsturen**: stuurt iemand de bot een DM of pingt iemand de bot in een
+  kanaal, dan krijgt `FORWARD_USER_ID` dat bericht als DM, met bijlagen en
+  een knop naar het originele bericht.
 
 Zusterproject van
 [proxmox-discord-relay](https://github.com/YellowDucky26/proxmox-discord-relay) en
@@ -64,6 +67,26 @@ Zusterproject van
 `ADMIN_ROLE_IDS`. `/link`, `/unlink`, `/announce`, `/stats` en `/inactive` zijn standaard alleen
 zichtbaar voor *Server beheren*. Dat kun je per rol aanpassen onder
 Serverinstellingen → Integraties → bot.
+
+### Berichten aan de bot doorsturen
+
+Zet `FORWARD_USER_ID` op het gebruikers-ID van degene die berichten aan de
+bot moet ontvangen (rechtsklik op jezelf → *Gebruikers-ID kopiëren*). De bot
+stuurt die persoon dan een DM bij:
+
+- elke DM aan de bot;
+- elk bericht in de server waarin de bot gepingd wordt (`@Kwakkel`), ook als
+  antwoord met ping.
+
+Elke DM toont wie het stuurde (met ID), waar, de tekst en de bijlagen. Bijlagen
+tot samen 10 MB gaan als bestand mee, grotere als link. Berichten van bots en
+van de ontvanger zelf worden niet doorgestuurd. Antwoorden gaat niet via de
+bot: klik op de naam bovenaan om de afzender zelf een bericht te sturen.
+
+De privileged *Message Content Intent* is hiervoor niet nodig. Discord geeft
+een bot altijd de tekst van DM's en van berichten waarin de bot zelf genoemd
+wordt. Pingt iemand de **rol** van de bot in plaats van de bot, dan kan de
+tekst leeg blijven; dat staat dan als *(geen tekst zichtbaar)* in de DM.
 
 ### Hoe weet de bot wie wie is?
 
